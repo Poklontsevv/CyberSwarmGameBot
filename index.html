@@ -168,7 +168,7 @@
 
         <div id="statsMenu" class="hidden flex-col items-center mt-4 space-y-4">
             <h2 class="text-3xl mb-4">СТАТИСТИКА</h2>
-            <div id="statsContainer" class="space-y-2 text-left text-lg">
+            <div id="statsContainer" class="space-y-4 text-left text-lg w-full max-w-sm">
                 <!-- JS will populate this -->
             </div>
             <button id="backToMainFromStatsButton" class="menu-button mt-8">Назад</button>
@@ -273,10 +273,10 @@
         let obstacles = [];
         
         let gameStats = {
-            easy: { wins: 0, losses: 0 },
-            medium: { wins: 0, losses: 0 },
-            hard: { wins: 0, losses: 0 },
-            nightmare: { wins: 0, losses: 0 }
+            easy: { wins: 0, losses: 0, dronesCollected: 0 },
+            medium: { wins: 0, losses: 0, dronesCollected: 0 },
+            hard: { wins: 0, losses: 0, dronesCollected: 0 },
+            nightmare: { wins: 0, losses: 0, dronesCollected: 0 }
         };
 
         function resizeCanvas() {
@@ -446,9 +446,8 @@
                 if (difficulty === 'nightmare') player.lastAteTime = Date.now();
                 player.swarm.push({ ...player.swarm[player.swarm.length - 1] });
                 
-                if (gameMode !== 'pvp' || pvpSubMode === 'points') {
-                    player.score += 2;
-                }
+                if (gameMode === 'single') gameStats[difficulty].dronesCollected += 2;
+                if (gameMode !== 'pvp' || pvpSubMode === 'points') player.score += 2;
                 
                 bonusBattery = null;
                 clearTimeout(bonusBatteryDespawnTimeout);
@@ -459,9 +458,9 @@
                 ateSomething = true;
                 if (difficulty === 'nightmare') player.lastAteTime = Date.now();
                 
-                if (gameMode !== 'pvp' || pvpSubMode === 'points') {
-                    player.score++;
-                }
+                if (gameMode === 'single') gameStats[difficulty].dronesCollected += 1;
+                if (gameMode !== 'pvp' || pvpSubMode === 'points') player.score++;
+                
                 generateBattery();
             }
             
@@ -920,10 +919,18 @@
             for (const key in difficulties) {
                 const stats = gameStats[key];
                 const row = document.createElement('div');
+                row.className = 'w-full mb-2';
                 row.innerHTML = `
-                    <span class="w-32 inline-block">${difficulties[key]}:</span>
-                    <span class="text-green-500">Побед: ${stats.wins}</span> | 
-                    <span class="text-gray-500">Поражений: ${stats.losses}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold">${difficulties[key]}:</span>
+                        <div class="text-right">
+                            <span class="text-green-500">Побед: ${stats.wins}</span>
+                            <span class="text-gray-500 ml-2">Поражений: ${stats.losses}</span>
+                        </div>
+                    </div>
+                    <div class="text-right text-sm opacity-80 text-cyan-400">
+                        Всего дронов собрано: ${stats.dronesCollected}
+                    </div>
                 `;
                 container.appendChild(row);
             }
@@ -1028,7 +1035,9 @@
                     const savedStats = JSON.parse(savedStatsRaw);
                     for(const key in gameStats) {
                         if (savedStats[key]) {
-                           gameStats[key] = savedStats[key];
+                           gameStats[key].wins = savedStats[key].wins || 0;
+                           gameStats[key].losses = savedStats[key].losses || 0;
+                           gameStats[key].dronesCollected = savedStats[key].dronesCollected || 0;
                         }
                     }
                 }
