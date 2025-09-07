@@ -148,6 +148,7 @@
         <div id="modeSelection" class="flex flex-col items-center">
              <button id="playButton" class="menu-button text-2xl">ИГРАТЬ</button>
              <button id="pvpButton" class="menu-button text-2xl">PVP</button>
+             <button id="statsButton" class="menu-button text-xl">СТАТИСТИКА</button>
              <button id="settingsButton" class="menu-button text-xl">НАСТРОЙКИ</button>
         </div>
         
@@ -164,6 +165,14 @@
             <button data-difficulty="hard" class="sub-menu-button">СЛОЖНО</button>
             <button data-difficulty="nightmare" class="sub-menu-button" style="border-color: #ff2d75; color: #ff2d75;">УЖАС</button>
         </div>
+
+        <div id="statsMenu" class="hidden flex-col items-center mt-4 space-y-4">
+            <h2 class="text-3xl mb-4">СТАТИСТИКА</h2>
+            <div id="statsContainer" class="space-y-2 text-left text-lg">
+                <!-- JS will populate this -->
+            </div>
+            <button id="backToMainFromStatsButton" class="menu-button mt-8">Назад</button>
+        </div>
         
         <div id="settingsMenu" class="hidden flex-col items-center mt-4 space-y-4">
             <h2 class="text-3xl mb-4">НАСТРОЙКИ ЦВЕТА</h2>
@@ -175,7 +184,7 @@
                 <span class="text-xl w-32 text-right">Игрок 2:</span>
                 <div id="p2ColorSelector" class="flex space-x-2"></div>
             </div>
-            <button id="backToMainButton" class="menu-button mt-8">Назад</button>
+            <button id="backToMainFromSettingsButton" class="menu-button mt-8">Назад</button>
         </div>
     </div>
 
@@ -231,12 +240,15 @@
         const settingsMenu = document.getElementById('settingsMenu');
         const p1ColorSelector = document.getElementById('p1ColorSelector');
         const p2ColorSelector = document.getElementById('p2ColorSelector');
-        const backToMainButton = document.getElementById('backToMainButton');
+        const backToMainFromSettingsButton = document.getElementById('backToMainFromSettingsButton');
         const greetingMessage = document.getElementById('greetingMessage');
+        const statsButton = document.getElementById('statsButton');
+        const statsMenu = document.getElementById('statsMenu');
+        const backToMainFromStatsButton = document.getElementById('backToMainFromStatsButton');
 
         // Game settings
-        const gridCells = 20; // Игровая сетка всегда 20x20
-        let gridSize; // Размер ячейки будет динамическим
+        const gridCells = 20;
+        let gridSize;
         let swarmSpeed, battery, lastRenderTime;
         let gameActive = false;
         let difficulty, gameMode, pvpSubMode;
@@ -251,17 +263,21 @@
         let bonusBattery, bonusBatterySpawnTimeout, bonusBatteryDespawnTimeout;
         let animationFrameId;
 
-        // Weapon variables
         let weaponPickup, disabledStaticTurret, disabledMobileTurret, weaponSpawnTimeout;
 
-        // Player state
         let p1, p2;
         const colors = ['#08d9d6', '#f97316', '#ff2d75', '#22c55e', '#a855f7'];
         let p1Color = colors[0];
         let p2Color = colors[1];
 
-        // Nightmare difficulty variables
         let obstacles = [];
+        
+        let gameStats = {
+            easy: { wins: 0, losses: 0 },
+            medium: { wins: 0, losses: 0 },
+            hard: { wins: 0, losses: 0 },
+            nightmare: { wins: 0, losses: 0 }
+        };
 
         function resizeCanvas() {
             const gameWrapper = document.getElementById('gameWrapper');
@@ -346,7 +362,7 @@
             swarmSpeed = 9;
             gameActive = true;
             gameOverElement.classList.add('hidden');
-            touchControls.classList.remove('hidden'); // Показываем кнопки управления
+            touchControls.classList.remove('hidden');
             
             staticBullets = []; staticLastFireTime = Date.now();
             mobileTurretBullets = []; lastMobileFireTime = Date.now(); moveCounter = 0;
@@ -567,6 +583,11 @@
                 }
             }
             
+            if (gameMode === 'single' && p1.score >= 20) {
+                endGame({p1Won: true});
+                return;
+            }
+            
             const p1Crashed = checkPlayerCollision(p1);
             const p2Crashed = p2 ? checkPlayerCollision(p2) : false;
             
@@ -738,11 +759,24 @@
 
         function endGame(result = {}) {
             gameActive = false;
-            touchControls.classList.add('hidden'); // Скрываем кнопки управления
+            touchControls.classList.add('hidden');
             
-            if (gameMode === 'pvp') {
+            if (gameMode === 'single') {
+                if(result.p1Won) {
+                    gameStats[difficulty].wins++;
+                } else {
+                    gameStats[difficulty].losses++;
+                }
+                saveStats();
+
+                gameOverMessage.textContent = result.p1Won ? 'ПОБЕДА!' : 'СВЯЗЬ С РОЕМ ПОТЕРЯНА';
+                gameOverMessage.style.color = result.p1Won ? '#22c55e' : '#ef4444';
+                finalScoreContainer.innerHTML = `ОЧКИ: <span class="text-yellow-400">${p1.score}</span>`;
+                finalScoreContainer.classList.remove('hidden');
+
+            } else if (gameMode === 'pvp') {
                 if (pvpSubMode === 'points') {
-                    let winner = 0; // 0 = ничья
+                    let winner = 0;
                     if (p1.score > p2.score) winner = 1;
                     else if (p2.score > p1.score) winner = 2;
 
@@ -755,8 +789,8 @@
                     }
                     
                     finalScoreContainer.innerHTML = `
-                        Очки Игрока 1: <span style="color: ${p1Color}; text-shadow: 0 0 5px ${p1Color};">${p1.score}</span> &nbsp;|&nbsp; 
-                        Очки Игрока 2: <span style="color: ${p2Color}; text-shadow: 0 0 5px ${p2Color};">${p2.score}</span>
+                        Очки Игрока 1: <span style="color: ${p1Color};">${p1.score}</span> | 
+                        Очки Игрока 2: <span style="color: ${p2Color};">${p2.score}</span>
                     `;
                 } else { // race mode
                     let winner = 0;
@@ -774,16 +808,10 @@
                         gameOverMessage.style.color = winner === 1 ? p1Color : p2Color;
                     }
                      finalScoreContainer.innerHTML = `
-                        Дроны Игрока 1: <span style="color: ${p1Color}; text-shadow: 0 0 5px ${p1Color};">${p1.swarm.length}</span> &nbsp;|&nbsp; 
-                        Дроны Игрока 2: <span style="color: ${p2Color}; text-shadow: 0 0 5px ${p2Color};">${p2.swarm.length}</span>
+                        Дроны Игрока 1: <span style="color: ${p1Color};">${p1.swarm.length}</span> | 
+                        Дроны Игрока 2: <span style="color: ${p2Color};">${p2.swarm.length}</span>
                     `;
                 }
-                finalScoreContainer.classList.remove('hidden');
-
-            } else { // single player
-                gameOverMessage.textContent = 'СВЯЗЬ С РОЕМ ПОТЕРЯНА';
-                gameOverMessage.style.color = '#ef4444';
-                finalScoreContainer.innerHTML = `ОЧКИ: <span class="text-yellow-400">${p1.score}</span>`;
                 finalScoreContainer.classList.remove('hidden');
             }
             
@@ -860,6 +888,7 @@
             difficultySelection.classList.add('hidden');
             pvpModeSelection.classList.add('hidden');
             settingsMenu.classList.add('hidden');
+            statsMenu.classList.add('hidden');
             gameOverElement.classList.add('hidden');
         }
         
@@ -870,6 +899,35 @@
                 timeout = setTimeout(() => func.apply(this, args), delay);
             };
         };
+        
+        function saveStats() {
+            try {
+                localStorage.setItem('cyberSwarmStats', JSON.stringify(gameStats));
+            } catch (e) {
+                console.error("Failed to save stats to localStorage", e);
+            }
+        }
+        
+        function displayStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = '';
+            const difficulties = {
+                easy: 'Легко',
+                medium: 'Средне',
+                hard: 'Сложно',
+                nightmare: 'Ужас'
+            };
+            for (const key in difficulties) {
+                const stats = gameStats[key];
+                const row = document.createElement('div');
+                row.innerHTML = `
+                    <span class="w-32 inline-block">${difficulties[key]}:</span>
+                    <span class="text-green-500">Побед: ${stats.wins}</span> | 
+                    <span class="text-gray-500">Поражений: ${stats.losses}</span>
+                `;
+                container.appendChild(row);
+            }
+        }
 
 
         // --- Event Listeners ---
@@ -910,12 +968,26 @@
             settingsMenu.classList.remove('hidden');
             settingsMenu.classList.add('flex');
         });
+        
+        statsButton.addEventListener('click', () => {
+            modeSelection.classList.add('hidden');
+            displayStats();
+            statsMenu.classList.remove('hidden');
+            statsMenu.classList.add('flex');
+        });
 
-        backToMainButton.addEventListener('click', () => {
+        backToMainFromSettingsButton.addEventListener('click', () => {
             settingsMenu.classList.add('hidden');
             settingsMenu.classList.remove('flex');
             modeSelection.classList.remove('hidden');
         });
+        
+        backToMainFromStatsButton.addEventListener('click', () => {
+            statsMenu.classList.add('hidden');
+            statsMenu.classList.remove('flex');
+            modeSelection.classList.remove('hidden');
+        });
+
 
         function populateColorSelectors() {
             const createSelector = (container, player) => {
@@ -949,27 +1021,38 @@
 
         backToMenuButton.addEventListener('click', returnToMenu);
         
-        // --- TELEGRAM MINI APP INITIALIZATION & RESIZE ---
         window.addEventListener('load', () => {
-          if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
-                const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
-            } else {
-                greetingMessage.classList.add('hidden');
+            try {
+                const savedStatsRaw = localStorage.getItem('cyberSwarmStats');
+                if (savedStatsRaw) {
+                    const savedStats = JSON.parse(savedStatsRaw);
+                    for(const key in gameStats) {
+                        if (savedStats[key]) {
+                           gameStats[key] = savedStats[key];
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load stats from localStorage", e);
             }
-          }
-          resizeCanvas(); // Initial resize
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+            
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
+                    const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
+                } else {
+                    greetingMessage.classList.add('hidden');
+                }
+            }
+          resizeCanvas();
         });
         
         window.addEventListener('resize', debounce(resizeCanvas, 100));
 
-
-        // Initial setup
         populateColorSelectors();
         setupTouchControls();
         document.addEventListener('keydown', changeDirection);
