@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Кибер-Рой</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 1. СКРИПТ TELEGRAM MINI APP -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #000000;
+            color: #00ffff; /* Neon Cyan */
+            text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+            touch-action: none; /* Отключаем стандартное поведение сенсорного экрана */
+            overflow: hidden; /* Убираем прокрутку */
+        }
+        #gameCanvas {
+            background-color: #0a0a0a;
+            border: 3px solid #08d9d6;
+            box-shadow: 0 0 25px rgba(8, 217, 214, 0.7);
+            border-radius: 8px;
+        }
+        .touch-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            width: 180px;
+            margin-top: 20px;
+        }
+        .touch-btn {
+            background-color: rgba(8, 217, 214, 0.1);
+            color: #08d9d6;
+            border: 2px solid #08d9d6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            user-select: none;
+            text-shadow: 0 0 5px #08d9d6;
+            transition: all 0.2s ease-in-out;
+        }
+        .touch-btn:active {
+            background-color: rgba(8, 217, 214, 0.4);
+            box-shadow: 0 0 15px #08d9d6;
+        }
+        #up { grid-column: 2; grid-row: 1; }
+        #left { grid-column: 1; grid-row: 2; }
+        #right { grid-column: 3; grid-row: 2; }
+        #down { grid-column: 2; grid-row: 3; }
+
+        @media (min-width: 768px) {
+            .touch-controls {
+                display: none;
+            }
+        }
+        .menu-button {
+             margin-top: 1rem;
+             padding: 0.75rem 2.5rem;
+             background-color: #08d9d6;
+             color: #000;
+             border-radius: 8px;
+             font-weight: bold;
+             transition: all 0.2s ease-in-out;
+             box-shadow: 0 0 15px #08d9d6;
+             text-shadow: none;
+        }
+        .menu-button:hover {
+            background-color: #67e8f9;
+            box-shadow: 0 0 25px #67e8f9;
+        }
+        .sub-menu-button {
+             padding: 0.5rem 2rem;
+             background-color: rgba(8, 217, 214, 0.1);
+             color: #08d9d6;
+             border: 2px solid #08d9d6;
+             border-radius: 8px;
+             font-weight: bold;
+             transition: all 0.2s ease-in-out;
+             width: 16rem; /* 256px */
+        }
+        .sub-menu-button:hover {
+             background-color: rgba(8, 217, 214, 0.3);
+             box-shadow: 0 0 15px #08d9d6;
+        }
+        #backToMenuButton {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background-color: rgba(255, 45, 117, 0.2);
+            border: 1px solid #ff2d75;
+            color: #ff2d75;
+        }
+        #scoreContainer {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+        }
+        .color-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        .color-swatch.selected {
+            border-color: #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="mainMenu" class="text-center">
+        <h1 class="text-6xl mb-4 text-cyan-400" style="text-shadow: 0 0 10px #08d9d6, 0 0 15px #08d9d6;">КИБЕР-РОЙ</h1>
+        
+        <div id="modeSelection" class="flex flex-col items-center">
+             <button id="playButton" class="menu-button text-2xl">ИГРАТЬ</button>
+             <button id="pvpButton" class="menu-button text-2xl">PVP</button>
+             <button id="settingsButton" class="menu-button text-xl">НАСТРОЙКИ</button>
+        </div>
+        
+        <div id="pvpModeSelection" class="hidden flex flex-col items-center mt-4 space-y-4">
+            <h2 class="text-3xl mb-2">РЕЖИМ PVP</h2>
+            <button data-pvp-mode="points" class="sub-menu-button">ЗА ОЧКИ</button>
+            <button data-pvp-mode="race" class="sub-menu-button">ГОНКА ДРОНОВ</button>
+        </div>
+
+        <div id="difficultySelection" class="hidden flex flex-col items-center mt-4 space-y-4">
+            <h2 class="text-3xl mb-2">УРОВЕНЬ СЛОЖНОСТИ</h2>
+            <button data-difficulty="easy" class="sub-menu-button">ЛЕГКО</button>
+            <button data-difficulty="medium" class="sub-menu-button">СРЕДНЕ</button>
+            <button data-difficulty="hard" class="sub-menu-button">СЛОЖНО</button>
+            <button data-difficulty="nightmare" class="sub-menu-button" style="border-color: #ff2d75; color: #ff2d75;">УЖАС</button>
+        </div>
+        
+        <div id="settingsMenu" class="hidden flex-col items-center mt-4 space-y-4">
+            <h2 class="text-3xl mb-4">НАСТРОЙКИ ЦВЕТА</h2>
+            <div class="flex items-center space-x-4">
+                <span class="text-xl w-32 text-right">Игрок 1:</span>
+                <div id="p1ColorSelector" class="flex space-x-2"></div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-xl w-32 text-right">Игрок 2:</span>
+                <div id="p2ColorSelector" class="flex space-x-2"></div>
+            </div>
+            <button id="backToMainButton" class="menu-button mt-8">Назад</button>
+        </div>
+    </div>
+
+    <div id="gameContainer" class="hidden relative flex-col items-center">
+        <button id="backToMenuButton" class="menu-button" style="margin-top: 0; padding: 0.5rem 1rem; font-size: 0.875rem; position: absolute; top: 0; right: 0;">В меню</button>
+        <h1 class="text-5xl mb-4 text-cyan-400" style="text-shadow: 0 0 8px #08d9d6, 0 0 12px #08d9d6;">КИБЕР-РОЙ</h1>
+        <div class="text-center mb-4 text-lg">
+            <div id="scoreContainer"></div>
+            <p id="controlsHint" class="text-sm mt-2 opacity-70">(Используйте клавиши со стрелками)</p>
+        </div>
+
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+        <div id="gameOver" class="hidden text-center mt-4 p-6 bg-black/80 border-2 border-red-500 rounded-lg" style="box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);">
+            <h2 id="gameOverMessage" class="text-2xl text-red-500" style="text-shadow: 0 0 5px #ef4444;">СВЯЗЬ С РОЕМ ПОТЕРЯНА</h2>
+            <p id="finalScoreContainer" class="mt-2 text-lg">СОБРАНО БАТАРЕЕК: <span class="text-yellow-400">0</span></p>
+            <button id="restartButton" class="mt-4 px-6 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-300 transition-colors font-bold" style="box-shadow: 0 0 10px #08d9d6; text-shadow: none;">
+                ПЕРЕЗАПУСК
+            </button>
+        </div>
+        
+        <div class="touch-controls">
+            <div id="up" class="touch-btn">▲</div>
+            <div id="left" class="touch-btn">◀</div>
+            <div id="right" class="touch-btn">▶</div>
+            <div id="down" class="touch-btn">▼</div>
+        </div>
+    </div>
+
+
+    <script>
+        // Game elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverElement = document.getElementById('gameOver');
+        const restartButton = document.getElementById('restartButton');
+        const finalScoreContainer = document.getElementById('finalScoreContainer');
+        const backToMenuButton = document.getElementById('backToMenuButton');
+        const scoreContainer = document.getElementById('scoreContainer');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const controlsHint = document.getElementById('controlsHint');
+
+        // Menu elements
+        const mainMenu = document.getElementById('mainMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const playButton = document.getElementById('playButton');
+        const pvpButton = document.getElementById('pvpButton');
+        const modeSelection = document.getElementById('modeSelection');
+        const pvpModeSelection = document.getElementById('pvpModeSelection');
+        const difficultySelection = document.getElementById('difficultySelection');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsMenu = document.getElementById('settingsMenu');
+        const p1ColorSelector = document.getElementById('p1ColorSelector');
+        const p2ColorSelector = document.getElementById('p2ColorSelector');
+        const backToMainButton = document.getElementById('backToMainButton');
+
+        // Game settings
+        const gridSize = 20;
+        let swarmSpeed, battery, lastRenderTime;
+        let gameActive = false;
+        let difficulty, gameMode, pvpSubMode;
+        
+        let staticTurret, staticBullets, staticLastFireTime, staticTurretDirection;
+        const staticFireRate = 5000;
+
+        let mobileTurret, mobileTurretBullets, lastMobileFireTime, moveCounter;
+        const mobileFireRate = 3500;
+        const mobileMoveInterval = 8;
+        
+        let bonusBattery, bonusBatterySpawnTimeout, bonusBatteryDespawnTimeout;
+        let animationFrameId;
+
+        // Weapon variables
+        let weaponPickup, disabledStaticTurret, disabledMobileTurret, weaponSpawnTimeout;
+
+        // Player state
+        let p1, p2;
+        const colors = ['#08d9d6', '#f97316', '#ff2d75', '#22c55e', '#a855f7'];
+        let p1Color = colors[0];
+        let p2Color = colors[1];
+
+        // Nightmare difficulty variables
+        let obstacles = [];
+
+        function initPlayer(x, y) {
+             return {
+                swarm: [{x, y}],
+                velocity: {x: 0, y: 0},
+                score: 0,
+                weapon: null,
+                weaponEndTime: 0,
+                lastFireTime: 0,
+                bullets: [],
+                lastAteTime: Date.now(),
+                changingDirection: false
+             };
+        }
+
+        function setupGame() {
+            const gridCells = canvas.width / gridSize;
+            let occupiedPositions = [];
+            
+            p1 = initPlayer(4, 10);
+            occupiedPositions.push({ ...p1.swarm[0] });
+
+            if(gameMode === 'pvp') {
+                p2 = initPlayer(gridCells - 5, 10);
+                occupiedPositions.push({ ...p2.swarm[0] });
+                const p1Label = pvpSubMode === 'race' ? "ДРОНЫ ИГРОКА 1" : "ОЧКИ ИГРОКА 1";
+                const p2Label = pvpSubMode === 'race' ? "ДРОНЫ ИГРОКА 2" : "ОЧКИ ИГРОКА 2";
+                const p1StartValue = pvpSubMode === 'race' ? p1.swarm.length : p1.score;
+                const p2StartValue = pvpSubMode === 'race' ? p2.swarm.length : p2.score;
+                scoreContainer.innerHTML = `
+                    <p>${p1Label}: <span id="score1" style="color: ${p1Color}; text-shadow: 0 0 5px ${p1Color};">${p1StartValue}</span></p>
+                    <p>${p2Label}: <span id="score2" style="color: ${p2Color}; text-shadow: 0 0 5px ${p2Color};">${p2StartValue}</span></p>
+                `;
+                 controlsHint.textContent = "(P1: Стрелки | P2: WASD)";
+            } else {
+                p2 = null;
+                scoreContainer.innerHTML = `<p>ОЧКИ: <span id="score1" class="text-yellow-400">0</span></p>`;
+                controlsHint.textContent = "(Используйте клавиши со стрелками)";
+            }
+            
+            staticTurret = null;
+            mobileTurret = null;
+            obstacles = [];
+
+            if (difficulty === 'medium' || difficulty === 'hard' || difficulty === 'nightmare') {
+                const newTurret = spawnStaticTurret(occupiedPositions);
+                staticTurret = newTurret.turret;
+                staticTurretDirection = newTurret.direction;
+                occupiedPositions.push({ x: staticTurret.x, y: staticTurret.y });
+            }
+
+            if (difficulty === 'hard' || difficulty === 'nightmare') {
+                let mobileX, mobileY;
+                do {
+                    mobileX = Math.floor(Math.random() * gridCells);
+                    mobileY = Math.floor(Math.random() * gridCells);
+                } while (occupiedPositions.some(pos => pos.x === mobileX && pos.y === mobileY));
+                mobileTurret = { x: mobileX, y: mobileY };
+                occupiedPositions.push({ x: mobileX, y: mobileY });
+            }
+
+            if (difficulty === 'nightmare') {
+                for (let i = 0; i < 3; i++) {
+                    let obstaclePos;
+                    do { obstaclePos = { x: Math.floor(Math.random() * gridCells), y: Math.floor(Math.random() * gridCells) };
+                    } while (occupiedPositions.some(pos => pos.x === obstaclePos.x && pos.y === obstaclePos.y));
+                    obstacles.push(obstaclePos);
+                    occupiedPositions.push(obstaclePos);
+                }
+            }
+            
+            swarmSpeed = 9;
+            gameActive = true;
+            gameOverElement.classList.add('hidden');
+            
+            staticBullets = []; staticLastFireTime = Date.now();
+            mobileTurretBullets = []; lastMobileFireTime = Date.now(); moveCounter = 0;
+            battery = {};
+            
+            bonusBattery = null;
+            clearTimeout(bonusBatterySpawnTimeout); clearTimeout(bonusBatteryDespawnTimeout);
+            scheduleNextBonusBattery();
+
+            weaponPickup = null;
+            disabledStaticTurret = null; disabledMobileTurret = null;
+            clearTimeout(weaponSpawnTimeout);
+            if (difficulty !== 'easy') scheduleNextWeapon();
+
+            generateBattery();
+        }
+        
+        function spawnStaticTurret(occupiedPositions) {
+            const gridCells = canvas.width / gridSize;
+            let staticX, staticY, direction;
+            do {
+                const side = Math.floor(Math.random() * 4);
+                switch (side) {
+                    case 0: staticX = Math.floor(Math.random() * gridCells); staticY = 0; direction = { x: 0, y: 1 }; break;
+                    case 1: staticX = gridCells - 1; staticY = Math.floor(Math.random() * gridCells); direction = { x: -1, y: 0 }; break;
+                    case 2: staticX = Math.floor(Math.random() * gridCells); staticY = gridCells - 1; direction = { x: 0, y: -1 }; break;
+                    case 3: staticX = 0; staticY = Math.floor(Math.random() * gridCells); direction = { x: 1, y: 0 }; break;
+                }
+            } while (occupiedPositions.some(pos => pos.x === staticX && pos.y === staticY));
+            return { turret: { x: staticX, y: staticY }, direction: direction };
+        }
+
+        function scheduleNextBonusBattery() {
+            const spawnDelay = Math.random() * 10000 + 5000;
+            bonusBatterySpawnTimeout = setTimeout(spawnBonusBattery, spawnDelay);
+        }
+
+        function spawnBonusBattery() {
+            if (!gameActive || bonusBattery) return;
+            bonusBattery = getUnoccupiedPosition();
+            const despawnDelay = Math.random() * 2000 + 3000;
+            bonusBatteryDespawnTimeout = setTimeout(despawnBonusBattery, despawnDelay);
+        }
+
+        function despawnBonusBattery() {
+            bonusBattery = null;
+            if (gameActive) scheduleNextBonusBattery();
+        }
+        
+        function scheduleNextWeapon() {
+            const spawnDelay = Math.random() * 10000 + 10000;
+            weaponSpawnTimeout = setTimeout(spawnWeapon, spawnDelay);
+        }
+
+        function spawnWeapon() {
+            if (!gameActive || weaponPickup) return;
+            const weaponTypes = ['weak', 'medium', 'strong'];
+            weaponPickup = getUnoccupiedPosition();
+            weaponPickup.type = weaponTypes[Math.floor(Math.random() * weaponTypes.length)];
+        }
+
+        function gameLoop(currentTime) {
+            if (!gameActive) return;
+            animationFrameId = window.requestAnimationFrame(gameLoop);
+            const secondsSinceLastRender = (currentTime - lastRenderTime) / 1000;
+            if (secondsSinceLastRender < 1 / swarmSpeed) return;
+            lastRenderTime = currentTime;
+            p1.changingDirection = false;
+            if(p2) p2.changingDirection = false;
+            update();
+            draw();
+        }
+        
+        function updatePlayer(player) {
+            if (!player.swarm || player.swarm.length === 0) return;
+            const head = { x: player.swarm[0].x + player.velocity.x, y: player.swarm[0].y + player.velocity.y };
+            player.swarm.unshift(head);
+            let ateSomething = false;
+
+            if (bonusBattery && head.x === bonusBattery.x && head.y === bonusBattery.y) {
+                ateSomething = true;
+                if (difficulty === 'nightmare') player.lastAteTime = Date.now();
+                player.swarm.push({ ...player.swarm[player.swarm.length - 1] }); // Add second drone for bonus
+                
+                if (gameMode !== 'pvp' || pvpSubMode === 'points') {
+                    player.score += 2;
+                }
+                
+                bonusBattery = null;
+                clearTimeout(bonusBatteryDespawnTimeout);
+                scheduleNextBonusBattery();
+            }
+
+            if (head.x === battery.x && head.y === battery.y) {
+                ateSomething = true;
+                if (difficulty === 'nightmare') player.lastAteTime = Date.now();
+                
+                if (gameMode !== 'pvp' || pvpSubMode === 'points') {
+                    player.score++;
+                }
+                generateBattery();
+            }
+            
+            if (!ateSomething) player.swarm.pop();
+
+            if (weaponPickup && head.x === weaponPickup.x && head.y === weaponPickup.y) {
+                player.weapon = weaponPickup.type;
+                player.weaponEndTime = Date.now() + 5000;
+                weaponPickup = null;
+                clearTimeout(weaponSpawnTimeout);
+                scheduleNextWeapon();
+            }
+            
+            if (player.weapon && Date.now() > player.weaponEndTime) player.weapon = null;
+
+            if (difficulty === 'nightmare' && player.swarm.length > 1 && Date.now() - player.lastAteTime > 4000) {
+                player.swarm.pop();
+                player.lastAteTime = Date.now();
+            }
+
+            if (player.weapon && (player.velocity.x !== 0 || player.velocity.y !== 0)) {
+                let fireRate = 0;
+                switch(player.weapon) {
+                    case 'weak': fireRate = 2000; break;
+                    case 'medium': fireRate = 1500; break;
+                    case 'strong': fireRate = 1000; break;
+                }
+                if (Date.now() - player.lastFireTime > fireRate) {
+                    player.bullets.push({ x: head.x + player.velocity.x, y: head.y + player.velocity.y, vx: player.velocity.x, vy: player.velocity.y });
+                    player.lastFireTime = Date.now();
+                }
+            }
+
+            for (let i = player.bullets.length - 1; i >= 0; i--) {
+                const bullet = player.bullets[i];
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) {
+                    player.bullets.splice(i, 1);
+                    continue;
+                }
+                let hit = false;
+                if (staticTurret && bullet.x === staticTurret.x && bullet.y === staticTurret.y) {
+                    disabledStaticTurret = { respawnTime: Date.now() + 10000 };
+                    staticTurret = null; hit = true;
+                }
+                if (mobileTurret && bullet.x === mobileTurret.x && bullet.y === mobileTurret.y) {
+                    disabledMobileTurret = { respawnTime: Date.now() + 10000 };
+                    mobileTurret = null; hit = true;
+                }
+                if (hit) {
+                    if (gameMode !== 'pvp' || pvpSubMode === 'points') {
+                        player.score += 4;
+                    }
+                    player.bullets.splice(i, 1);
+                }
+            }
+        }
+
+
+        function update() {
+            updatePlayer(p1);
+            if(p2) updatePlayer(p2);
+            
+            let targetHead = p1.swarm.length > 0 ? p1.swarm[0] : null;
+
+            if (gameMode === 'pvp' && mobileTurret && p1.swarm.length > 0 && p2 && p2.swarm.length > 0) {
+                const p1Dist = Math.abs(p1.swarm[0].x - mobileTurret.x) + Math.abs(p1.swarm[0].y - mobileTurret.y);
+                const p2Dist = Math.abs(p2.swarm[0].x - mobileTurret.x) + Math.abs(p2.swarm[0].y - mobileTurret.y);
+                if (p2Dist < p1Dist) {
+                    targetHead = p2.swarm[0];
+                }
+            }
+            
+            if (disabledStaticTurret && Date.now() > disabledStaticTurret.respawnTime) {
+                const occupied = [...p1.swarm, ...(p2 ? p2.swarm : []), battery, mobileTurret, weaponPickup, bonusBattery, ...obstacles].filter(Boolean);
+                const newTurret = spawnStaticTurret(occupied);
+                staticTurret = newTurret.turret;
+                staticTurretDirection = newTurret.direction;
+                disabledStaticTurret = null;
+            }
+            if (disabledMobileTurret && Date.now() > disabledMobileTurret.respawnTime) {
+                mobileTurret = getUnoccupiedPosition();
+                disabledMobileTurret = null;
+            }
+
+            if (staticTurret && Date.now() - staticLastFireTime > staticFireRate) {
+                staticBullets.push({ x: staticTurret.x + staticTurretDirection.x, y: staticTurret.y + staticTurretDirection.y, vx: staticTurretDirection.x, vy: staticTurretDirection.y });
+                staticLastFireTime = Date.now();
+            }
+            for (let i = staticBullets.length - 1; i >= 0; i--) {
+                const bullet = staticBullets[i];
+                bullet.x += bullet.vx;
+                bullet.y += bullet.vy;
+                if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) staticBullets.splice(i, 1);
+            }
+            
+            if (mobileTurret && targetHead) {
+                moveCounter++;
+                if (moveCounter > mobileMoveInterval) {
+                    moveCounter = 0;
+                    const dx = targetHead.x - mobileTurret.x, dy = targetHead.y - mobileTurret.y;
+                    if (Math.abs(dx) > Math.abs(dy)) mobileTurret.x += Math.sign(dx);
+                    else mobileTurret.y += Math.sign(dy);
+                }
+                if (Date.now() - lastMobileFireTime > mobileFireRate) {
+                    const dx = targetHead.x - mobileTurret.x, dy = targetHead.y - mobileTurret.y;
+                    let velX = 0, velY = 0;
+                    if (Math.abs(dx) > Math.abs(dy)) velX = Math.sign(dx);
+                    else velY = Math.sign(dy);
+                    mobileTurretBullets.push({ x: mobileTurret.x + velX, y: mobileTurret.y + velY, vx: velX, vy: velY });
+                    lastMobileFireTime = Date.now();
+                }
+                for (let i = mobileTurretBullets.length - 1; i >= 0; i--) {
+                    const bullet = mobileTurretBullets[i];
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                    if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) mobileTurretBullets.splice(i, 1);
+                }
+            }
+            
+            const p1Crashed = checkPlayerCollision(p1);
+            const p2Crashed = p2 ? checkPlayerCollision(p2) : false;
+            
+            if (p1Crashed || p2Crashed) {
+                endGame({p1Crashed, p2Crashed});
+                return;
+            }
+
+            if (gameMode === 'pvp' && pvpSubMode === 'race') {
+                if (p1.swarm.length >= 20) {
+                    endGame({p1WonRace: true});
+                    return;
+                }
+                if (p2.swarm.length >= 20) {
+                    endGame({p2WonRace: true});
+                    return;
+                }
+            }
+
+            // Update scores/drone count display
+            const score1El = document.getElementById('score1');
+            if (score1El) {
+                score1El.textContent = (gameMode === 'pvp' && pvpSubMode === 'race') ? p1.swarm.length : p1.score;
+            }
+            if(p2) {
+                const score2El = document.getElementById('score2');
+                if (score2El) {
+                    score2El.textContent = (pvpSubMode === 'race') ? p2.swarm.length : p2.score;
+                }
+            }
+        }
+
+        function checkPlayerCollision(player) {
+            if (!player || player.swarm.length === 0) return false;
+            const head = player.swarm[0];
+            if (head.x < 0 || head.x >= canvas.width / gridSize || head.y < 0 || head.y >= canvas.height / gridSize) return true;
+            for (let i = 1; i < player.swarm.length; i++) {
+                if (head.x === player.swarm[i].x && head.y === player.swarm[i].y) return true;
+            }
+            if (mobileTurret && head.x === mobileTurret.x && head.y === mobileTurret.y) return true;
+            for (const bullet of staticBullets) if (head.x === bullet.x && head.y === bullet.y) return true;
+            for (const bullet of mobileTurretBullets) if (head.x === bullet.x && head.y === bullet.y) return true;
+            for (const obstacle of obstacles) if (head.x === obstacle.x && head.y === obstacle.y) return true;
+            return false;
+        };
+
+        function drawDrone(xPos, yPos, color, isHead = false) {
+            ctx.shadowColor = color; ctx.shadowBlur = 10;
+            const unit = gridSize / 10;
+            ctx.fillStyle = color;
+            ctx.fillRect(xPos + unit * 3, yPos + unit * 3, unit * 4, unit * 4);
+            ctx.fillRect(xPos + unit * 4, yPos, unit * 2, unit * 10);
+            ctx.fillRect(xPos, yPos + unit * 4, unit * 10, unit * 2);
+            if (isHead) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.beginPath();
+                ctx.arc(xPos + unit * 5, yPos + unit * 5, unit * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (obstacles.length > 0) {
+                const obstacleColor = '#4b5563';
+                ctx.fillStyle = obstacleColor; ctx.shadowColor = '#9ca3af'; ctx.shadowBlur = 10;
+                obstacles.forEach(o => ctx.fillRect(o.x * gridSize, o.y * gridSize, gridSize, gridSize));
+            }
+
+            ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 15;
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(battery.x * gridSize + 5, battery.y * gridSize + 2, gridSize - 10, gridSize - 4);
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(battery.x * gridSize + 7, battery.y * gridSize, gridSize - 14, 2);
+            
+            if (bonusBattery) {
+                const bonusColor = '#3b82f6';
+                ctx.shadowColor = bonusColor; ctx.shadowBlur = 15; ctx.fillStyle = bonusColor;
+                const centerX = bonusBattery.x * gridSize + gridSize / 2, centerY = bonusBattery.y * gridSize + gridSize / 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, gridSize / 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#93c5fd';
+                ctx.fillRect(centerX - gridSize/8, centerY - gridSize/4, gridSize/4, gridSize/2);
+                ctx.fillRect(centerX - gridSize/4, centerY - gridSize/8, gridSize/2, gridSize/4);
+            }
+            
+            if (weaponPickup) {
+                let color;
+                switch(weaponPickup.type) {
+                    case 'weak': color = '#22c55e'; break;
+                    case 'medium': color = '#eab308'; break;
+                    case 'strong': color = '#ef4444'; break;
+                }
+                ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 15;
+                const centerX = weaponPickup.x * gridSize + gridSize / 2, centerY = weaponPickup.y * gridSize + gridSize / 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - gridSize/3);
+                ctx.lineTo(centerX + gridSize/3, centerY + gridSize/6);
+                ctx.lineTo(centerX - gridSize/3, centerY + gridSize/6);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            p1.swarm.forEach((drone, index) => drawDrone(drone.x * gridSize, drone.y * gridSize, p1Color, index === 0));
+            if(p2) p2.swarm.forEach((drone, index) => drawDrone(drone.x * gridSize, drone.y * gridSize, p2Color, index === 0));
+
+            const drawBullets = (bullets) => {
+                if (bullets.length === 0) return;
+                const bulletColor = '#f0fdf4';
+                ctx.fillStyle = bulletColor; ctx.shadowColor = bulletColor; ctx.shadowBlur = 10;
+                bullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x * gridSize + gridSize / 2, bullet.y * gridSize + gridSize / 2, gridSize / 5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            };
+            drawBullets(p1.bullets);
+            if(p2) drawBullets(p2.bullets);
+            
+            if (staticTurret) {
+                const color = '#ff2d75';
+                ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 15;
+                ctx.fillRect(staticTurret.x * gridSize, staticTurret.y * gridSize, gridSize, gridSize);
+                if (staticTurretDirection.x === 1) ctx.fillRect(staticTurret.x * gridSize, staticTurret.y * gridSize + (gridSize/4), gridSize * 1.5, gridSize / 2);
+                else if (staticTurretDirection.x === -1) ctx.fillRect(staticTurret.x * gridSize - gridSize / 2, staticTurret.y * gridSize + (gridSize/4), gridSize * 1.5, gridSize / 2);
+                else if (staticTurretDirection.y === 1) ctx.fillRect(staticTurret.x * gridSize + (gridSize/4), staticTurret.y * gridSize, gridSize / 2, gridSize * 1.5);
+                else if (staticTurretDirection.y === -1) ctx.fillRect(staticTurret.x * gridSize + (gridSize/4), staticTurret.y * gridSize - gridSize / 2, gridSize / 2, gridSize * 1.5);
+                staticBullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x * gridSize + gridSize / 2, bullet.y * gridSize + gridSize / 2, gridSize / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            if (mobileTurret) {
+                const color = '#a855f7';
+                ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(mobileTurret.x * gridSize + gridSize / 2, mobileTurret.y * gridSize + gridSize / 2, gridSize / 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                mobileTurretBullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(bullet.x * gridSize + gridSize / 2, bullet.y * gridSize + gridSize / 2, gridSize / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function getUnoccupiedPosition() {
+            let pos;
+            const gridCells = canvas.width / gridSize;
+            const allObjects = [...p1.swarm, ...(p2 ? p2.swarm : []), battery, weaponPickup, bonusBattery, ...obstacles];
+            if (staticTurret) allObjects.push(staticTurret);
+            if (mobileTurret) allObjects.push(mobileTurret);
+            
+            do {
+                pos = { x: Math.floor(Math.random() * gridCells), y: Math.floor(Math.random() * gridCells) };
+            } while (allObjects.some(obj => obj && obj.x === pos.x && obj.y === pos.y));
+            return pos;
+        }
+
+        function generateBattery() {
+            const newPos = getUnoccupiedPosition();
+            battery.x = newPos.x;
+            battery.y = newPos.y;
+        }
+
+        function endGame(result = {}) {
+            gameActive = false;
+            
+            if (gameMode === 'pvp') {
+                if (pvpSubMode === 'points') {
+                    let winner = 0; // 0 = ничья
+                    if (p1.score > p2.score) winner = 1;
+                    else if (p2.score > p1.score) winner = 2;
+
+                    if (winner === 0) {
+                        gameOverMessage.textContent = 'НИЧЬЯ!';
+                        gameOverMessage.style.color = '#ffffff';
+                    } else {
+                        gameOverMessage.textContent = `ИГРОК ${winner} ПОБЕДИЛ!`;
+                        gameOverMessage.style.color = winner === 1 ? p1Color : p2Color;
+                    }
+                    
+                    finalScoreContainer.innerHTML = `
+                        Очки Игрока 1: <span style="color: ${p1Color}; text-shadow: 0 0 5px ${p1Color};">${p1.score}</span> &nbsp;|&nbsp; 
+                        Очки Игрока 2: <span style="color: ${p2Color}; text-shadow: 0 0 5px ${p2Color};">${p2.score}</span>
+                    `;
+                } else { // race mode
+                    let winner = 0;
+                    if (result.p1WonRace) winner = 1;
+                    else if (result.p2WonRace) winner = 2;
+                    else if (result.p1Crashed && !result.p2Crashed) winner = 2;
+                    else if (result.p2Crashed && !result.p1Crashed) winner = 1;
+                    else if (result.p1Crashed && result.p2Crashed) {
+                         gameOverMessage.textContent = 'НИЧЬЯ!';
+                         gameOverMessage.style.color = '#ffffff';
+                    }
+                    
+                    if (winner !== 0) {
+                        gameOverMessage.textContent = `ИГРОК ${winner} ПОБЕДИЛ!`;
+                        gameOverMessage.style.color = winner === 1 ? p1Color : p2Color;
+                    }
+                     finalScoreContainer.innerHTML = `
+                        Дроны Игрока 1: <span style="color: ${p1Color}; text-shadow: 0 0 5px ${p1Color};">${p1.swarm.length}</span> &nbsp;|&nbsp; 
+                        Дроны Игрока 2: <span style="color: ${p2Color}; text-shadow: 0 0 5px ${p2Color};">${p2.swarm.length}</span>
+                    `;
+                }
+                finalScoreContainer.classList.remove('hidden');
+
+            } else { // single player
+                gameOverMessage.textContent = 'СВЯЗЬ С РОЕМ ПОТЕРЯНА';
+                gameOverMessage.style.color = '#ef4444';
+                finalScoreContainer.innerHTML = `ОЧКИ: <span class="text-yellow-400">${p1.score}</span>`;
+                finalScoreContainer.classList.remove('hidden');
+            }
+            
+            gameOverElement.classList.remove('hidden');
+            clearTimeout(bonusBatterySpawnTimeout);
+            clearTimeout(bonusBatteryDespawnTimeout);
+            clearTimeout(weaponSpawnTimeout);
+            window.cancelAnimationFrame(animationFrameId);
+        }
+
+        function changeDirection(event) {
+            if (!gameActive) return;
+            const keyPressed = event.key.toLowerCase();
+            
+            if (p1 && !p1.changingDirection) {
+                const goingUp = p1.velocity.y === -1, goingDown = p1.velocity.y === 1, goingRight = p1.velocity.x === 1;
+                if (keyPressed === "arrowup" && !goingDown) { p1.velocity = { x: 0, y: -1 }; p1.changingDirection = true; }
+                if (keyPressed === "arrowdown" && !goingUp) { p1.velocity = { x: 0, y: 1 }; p1.changingDirection = true; }
+                if (keyPressed === "arrowleft" && !goingRight) { p1.velocity = { x: -1, y: 0 }; p1.changingDirection = true; }
+                if (keyPressed === "arrowright" && (p1.velocity.x !== -1)) { p1.velocity = { x: 1, y: 0 }; p1.changingDirection = true; }
+            }
+            
+            if (p2 && !p2.changingDirection) {
+                const goingUp = p2.velocity.y === -1, goingDown = p2.velocity.y === 1, goingRight = p2.velocity.x === 1;
+                if (keyPressed === "w" && !goingDown) { p2.velocity = { x: 0, y: -1 }; p2.changingDirection = true; }
+                if (keyPressed === "s" && !goingUp) { p2.velocity = { x: 0, y: 1 }; p2.changingDirection = true; }
+                if (keyPressed === "a" && !goingRight) { p2.velocity = { x: -1, y: 0 }; p2.changingDirection = true; }
+                if (keyPressed === "d" && (p2.velocity.x !== -1)) { p2.velocity = { x: 1, y: 0 }; p2.changingDirection = true; }
+            }
+        }
+        
+        function setupTouchControls() {
+            const upBtn = document.getElementById('up'), downBtn = document.getElementById('down');
+            const leftBtn = document.getElementById('left'), rightBtn = document.getElementById('right');
+            
+            const handleTouch = (e, direction) => {
+                e.preventDefault(); 
+                if (!gameActive || !p1 || p1.changingDirection) return;
+                let newVelocity = null;
+                const goingUp = p1.velocity.y === -1, goingDown = p1.velocity.y === 1, goingRight = p1.velocity.x === 1;
+                const goingLeft = () => p1.velocity.x === -1;
+                switch(direction) {
+                    case 'up': if (!goingDown) newVelocity = { x: 0, y: -1 }; break;
+                    case 'down': if (!goingUp) newVelocity = { x: 0, y: 1 }; break;
+                    case 'left': if (!goingRight) newVelocity = { x: -1, y: 0 }; break;
+                    case 'right': if (!goingLeft()) newVelocity = { x: 1, y: 0 }; break;
+                }
+                if (newVelocity) {
+                    p1.changingDirection = true;
+                    p1.velocity = newVelocity;
+                }
+            };
+            
+            ['touchstart', 'mousedown'].forEach(evt => {
+                upBtn.addEventListener(evt, (e) => handleTouch(e, 'up'));
+                downBtn.addEventListener(evt, (e) => handleTouch(e, 'down'));
+                leftBtn.addEventListener(evt, (e) => handleTouch(e, 'left'));
+                rightBtn.addEventListener(evt, (e) => handleTouch(e, 'right'));
+            });
+        }
+        
+        function returnToMenu() {
+            gameActive = false;
+            if (animationFrameId) window.cancelAnimationFrame(animationFrameId);
+            clearTimeout(bonusBatterySpawnTimeout);
+            clearTimeout(bonusBatteryDespawnTimeout);
+            clearTimeout(weaponSpawnTimeout);
+
+            gameContainer.classList.add('hidden');
+            gameContainer.classList.remove('flex');
+            mainMenu.classList.remove('hidden');
+            
+            modeSelection.classList.remove('hidden');
+            difficultySelection.classList.add('hidden');
+            pvpModeSelection.classList.add('hidden');
+            settingsMenu.classList.add('hidden');
+            gameOverElement.classList.add('hidden');
+        }
+
+        // --- Event Listeners ---
+        playButton.addEventListener('click', () => {
+            gameMode = 'single';
+            modeSelection.classList.add('hidden');
+            difficultySelection.classList.remove('hidden');
+        });
+        
+        pvpButton.addEventListener('click', () => {
+            gameMode = 'pvp';
+            modeSelection.classList.add('hidden');
+            pvpModeSelection.classList.remove('hidden');
+        });
+
+        pvpModeSelection.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                pvpSubMode = e.target.dataset.pvpMode;
+                pvpModeSelection.classList.add('hidden');
+                difficultySelection.classList.remove('hidden');
+            }
+        });
+
+        difficultySelection.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                difficulty = e.target.dataset.difficulty;
+                mainMenu.classList.add('hidden');
+                gameContainer.classList.remove('hidden');
+                gameContainer.classList.add('flex');
+                setupGame();
+                animationFrameId = window.requestAnimationFrame(gameLoop);
+            }
+        });
+        
+        settingsButton.addEventListener('click', () => {
+            modeSelection.classList.add('hidden');
+            settingsMenu.classList.remove('hidden');
+            settingsMenu.classList.add('flex');
+        });
+
+        backToMainButton.addEventListener('click', () => {
+            settingsMenu.classList.add('hidden');
+            settingsMenu.classList.remove('flex');
+            modeSelection.classList.remove('hidden');
+        });
+
+        function populateColorSelectors() {
+            const createSelector = (container, player) => {
+                container.innerHTML = '';
+                colors.forEach(color => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = color;
+                    swatch.dataset.color = color;
+                    if ((player === 1 && color === p1Color) || (player === 2 && color === p2Color)) {
+                        swatch.classList.add('selected');
+                    }
+                    swatch.addEventListener('click', () => {
+                        if (player === 1) p1Color = color;
+                        else p2Color = color;
+                        
+                        Array.from(container.children).forEach(child => child.classList.remove('selected'));
+                        swatch.classList.add('selected');
+                    });
+                    container.appendChild(swatch);
+                });
+            };
+            createSelector(p1ColorSelector, 1);
+            createSelector(p2ColorSelector, 2);
+        }
+
+        restartButton.addEventListener('click', () => {
+            setupGame();
+            animationFrameId = window.requestAnimationFrame(gameLoop);
+        });
+
+        backToMenuButton.addEventListener('click', returnToMenu);
+        
+        // --- TELEGRAM MINI APP INITIALIZATION ---
+        // 2. Инициализация приложения
+        window.addEventListener('load', () => {
+          if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready(); // Сообщаем, что приложение готово
+            tg.expand(); // Растягиваем на весь экран
+
+            // Можно адаптировать тему, но наша игра и так темная
+            // document.body.style.backgroundColor = tg.themeParams.bg_color;
+          }
+        });
+
+
+        // Initial setup
+        populateColorSelectors();
+        setupTouchControls();
+        document.addEventListener('keydown', changeDirection);
+
+    </script>
+</body>
+</html>
