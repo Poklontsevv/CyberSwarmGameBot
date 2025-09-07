@@ -196,7 +196,7 @@
             </button>
         </div>
         
-        <div class="touch-controls">
+        <div id="touchControls" class="touch-controls">
             <div id="up" class="touch-btn">▲</div>
             <div id="left" class="touch-btn">◀</div>
             <div id="right" class="touch-btn">▶</div>
@@ -216,6 +216,7 @@
         const scoreContainer = document.getElementById('scoreContainer');
         const gameOverMessage = document.getElementById('gameOverMessage');
         const controlsHint = document.getElementById('controlsHint');
+        const touchControls = document.getElementById('touchControls');
 
         // Menu elements
         const mainMenu = document.getElementById('mainMenu');
@@ -343,6 +344,7 @@
             swarmSpeed = 9;
             gameActive = true;
             gameOverElement.classList.add('hidden');
+            touchControls.classList.remove('hidden'); // Показываем кнопки управления
             
             staticBullets = []; staticLastFireTime = Date.now();
             mobileTurretBullets = []; lastMobileFireTime = Date.now(); moveCounter = 0;
@@ -734,6 +736,7 @@
 
         function endGame(result = {}) {
             gameActive = false;
+            touchControls.classList.add('hidden'); // Скрываем кнопки управления
             
             if (gameMode === 'pvp') {
                 if (pvpSubMode === 'points') {
