@@ -6,22 +6,41 @@
     <title>Кибер-Рой</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 1. СКРИПТ TELEGRAM MINI APP -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
         body {
             font-family: 'Orbitron', sans-serif;
             background-color: #000000;
-            color: #00ffff; /* Neon Cyan */
+            color: #00ffff;
             text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
-            touch-action: none; /* Отключаем стандартное поведение сенсорного экрана */
-            overflow: hidden; /* Убираем прокрутку */
+            touch-action: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
         #gameCanvas {
             background-color: #0a0a0a;
             border: 3px solid #08d9d6;
             box-shadow: 0 0 25px rgba(8, 217, 214, 0.7);
             border-radius: 8px;
+            max-width: 100vw;
+            max-height: 80vh; /* Ограничиваем высоту, чтобы влезли кнопки */
+            aspect-ratio: 1 / 1;
         }
         .touch-controls {
             display: grid;
@@ -99,6 +118,7 @@
             background-color: rgba(255, 45, 117, 0.2);
             border: 1px solid #ff2d75;
             color: #ff2d75;
+            z-index: 10;
         }
         #scoreContainer {
             display: flex;
@@ -119,8 +139,8 @@
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
-
+<body>
+<div id="gameWrapper">
     <div id="mainMenu" class="text-center">
         <h1 class="text-6xl mb-4 text-cyan-400" style="text-shadow: 0 0 10px #08d9d6, 0 0 15px #08d9d6;">КИБЕР-РОЙ</h1>
         
@@ -159,14 +179,14 @@
     </div>
 
     <div id="gameContainer" class="hidden relative flex-col items-center">
-        <button id="backToMenuButton" class="menu-button" style="margin-top: 0; padding: 0.5rem 1rem; font-size: 0.875rem; position: absolute; top: 0; right: 0;">В меню</button>
+        <button id="backToMenuButton" class="menu-button">В меню</button>
         <h1 class="text-5xl mb-4 text-cyan-400" style="text-shadow: 0 0 8px #08d9d6, 0 0 12px #08d9d6;">КИБЕР-РОЙ</h1>
         <div class="text-center mb-4 text-lg">
             <div id="scoreContainer"></div>
             <p id="controlsHint" class="text-sm mt-2 opacity-70">(Используйте клавиши со стрелками)</p>
         </div>
 
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <canvas id="gameCanvas"></canvas>
 
         <div id="gameOver" class="hidden text-center mt-4 p-6 bg-black/80 border-2 border-red-500 rounded-lg" style="box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);">
             <h2 id="gameOverMessage" class="text-2xl text-red-500" style="text-shadow: 0 0 5px #ef4444;">СВЯЗЬ С РОЕМ ПОТЕРЯНА</h2>
@@ -183,7 +203,7 @@
             <div id="down" class="touch-btn">▼</div>
         </div>
     </div>
-
+</div>
 
     <script>
         // Game elements
@@ -212,7 +232,8 @@
         const backToMainButton = document.getElementById('backToMainButton');
 
         // Game settings
-        const gridSize = 20;
+        const gridCells = 20; // Игровая сетка всегда 20x20
+        let gridSize; // Размер ячейки будет динамическим
         let swarmSpeed, battery, lastRenderTime;
         let gameActive = false;
         let difficulty, gameMode, pvpSubMode;
@@ -239,6 +260,17 @@
         // Nightmare difficulty variables
         let obstacles = [];
 
+        function resizeCanvas() {
+            const gameWrapper = document.getElementById('gameWrapper');
+            const size = Math.min(gameWrapper.clientWidth, gameWrapper.clientHeight) * 0.8;
+            canvas.width = size;
+            canvas.height = size;
+            gridSize = canvas.width / gridCells;
+            if (gameActive) {
+                draw();
+            }
+        }
+
         function initPlayer(x, y) {
              return {
                 swarm: [{x, y}],
@@ -254,7 +286,6 @@
         }
 
         function setupGame() {
-            const gridCells = canvas.width / gridSize;
             let occupiedPositions = [];
             
             p1 = initPlayer(4, 10);
@@ -330,7 +361,6 @@
         }
         
         function spawnStaticTurret(occupiedPositions) {
-            const gridCells = canvas.width / gridSize;
             let staticX, staticY, direction;
             do {
                 const side = Math.floor(Math.random() * 4);
@@ -394,7 +424,7 @@
             if (bonusBattery && head.x === bonusBattery.x && head.y === bonusBattery.y) {
                 ateSomething = true;
                 if (difficulty === 'nightmare') player.lastAteTime = Date.now();
-                player.swarm.push({ ...player.swarm[player.swarm.length - 1] }); // Add second drone for bonus
+                player.swarm.push({ ...player.swarm[player.swarm.length - 1] });
                 
                 if (gameMode !== 'pvp' || pvpSubMode === 'points') {
                     player.score += 2;
@@ -449,7 +479,7 @@
                 const bullet = player.bullets[i];
                 bullet.x += bullet.vx;
                 bullet.y += bullet.vy;
-                if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) {
+                if (bullet.x < 0 || bullet.x >= gridCells || bullet.y < 0 || bullet.y >= gridCells || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) {
                     player.bullets.splice(i, 1);
                     continue;
                 }
@@ -506,7 +536,7 @@
                 const bullet = staticBullets[i];
                 bullet.x += bullet.vx;
                 bullet.y += bullet.vy;
-                if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) staticBullets.splice(i, 1);
+                if (bullet.x < 0 || bullet.x >= gridCells || bullet.y < 0 || bullet.y >= gridCells || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) staticBullets.splice(i, 1);
             }
             
             if (mobileTurret && targetHead) {
@@ -529,7 +559,7 @@
                     const bullet = mobileTurretBullets[i];
                     bullet.x += bullet.vx;
                     bullet.y += bullet.vy;
-                    if (bullet.x < 0 || bullet.x >= canvas.width/gridSize || bullet.y < 0 || bullet.y >= canvas.height/gridSize || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) mobileTurretBullets.splice(i, 1);
+                    if (bullet.x < 0 || bullet.x >= gridCells || bullet.y < 0 || bullet.y >= gridCells || obstacles.some(o => o.x === bullet.x && o.y === bullet.y)) mobileTurretBullets.splice(i, 1);
                 }
             }
             
@@ -552,7 +582,6 @@
                 }
             }
 
-            // Update scores/drone count display
             const score1El = document.getElementById('score1');
             if (score1El) {
                 score1El.textContent = (gameMode === 'pvp' && pvpSubMode === 'race') ? p1.swarm.length : p1.score;
@@ -568,7 +597,7 @@
         function checkPlayerCollision(player) {
             if (!player || player.swarm.length === 0) return false;
             const head = player.swarm[0];
-            if (head.x < 0 || head.x >= canvas.width / gridSize || head.y < 0 || head.y >= canvas.height / gridSize) return true;
+            if (head.x < 0 || head.x >= gridCells || head.y < 0 || head.y >= gridCells) return true;
             for (let i = 1; i < player.swarm.length; i++) {
                 if (head.x === player.swarm[i].x && head.y === player.swarm[i].y) return true;
             }
@@ -687,7 +716,6 @@
 
         function getUnoccupiedPosition() {
             let pos;
-            const gridCells = canvas.width / gridSize;
             const allObjects = [...p1.swarm, ...(p2 ? p2.swarm : []), battery, weaponPickup, bonusBattery, ...obstacles];
             if (staticTurret) allObjects.push(staticTurret);
             if (mobileTurret) allObjects.push(mobileTurret);
@@ -829,6 +857,15 @@
             settingsMenu.classList.add('hidden');
             gameOverElement.classList.add('hidden');
         }
+        
+        const debounce = (func, delay) => {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
 
         // --- Event Listeners ---
         playButton.addEventListener('click', () => {
@@ -857,6 +894,7 @@
                 mainMenu.classList.add('hidden');
                 gameContainer.classList.remove('hidden');
                 gameContainer.classList.add('flex');
+                resizeCanvas();
                 setupGame();
                 animationFrameId = window.requestAnimationFrame(gameLoop);
             }
@@ -906,18 +944,17 @@
 
         backToMenuButton.addEventListener('click', returnToMenu);
         
-        // --- TELEGRAM MINI APP INITIALIZATION ---
-        // 2. Инициализация приложения
+        // --- TELEGRAM MINI APP INITIALIZATION & RESIZE ---
         window.addEventListener('load', () => {
           if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            tg.ready(); // Сообщаем, что приложение готово
-            tg.expand(); // Растягиваем на весь экран
-
-            // Можно адаптировать тему, но наша игра и так темная
-            // document.body.style.backgroundColor = tg.themeParams.bg_color;
+            tg.ready();
+            tg.expand();
           }
+          resizeCanvas(); // Initial resize
         });
+        
+        window.addEventListener('resize', debounce(resizeCanvas, 100));
 
 
         // Initial setup
@@ -928,3 +965,4 @@
     </script>
 </body>
 </html>
+
