@@ -142,7 +142,8 @@
 <body>
 <div id="gameWrapper">
     <div id="mainMenu" class="text-center">
-        <h1 class="text-6xl mb-4 text-cyan-400" style="text-shadow: 0 0 10px #08d9d6, 0 0 15px #08d9d6;">КИБЕР-РОЙ</h1>
+        <h1 class="text-6xl mb-2 text-cyan-400" style="text-shadow: 0 0 10px #08d9d6, 0 0 15px #08d9d6;">КИБЕР-РОЙ</h1>
+        <h2 id="greetingMessage" class="text-2xl mb-4 opacity-80" style="text-shadow: 0 0 5px #00ffff;"></h2>
         
         <div id="modeSelection" class="flex flex-col items-center">
              <button id="playButton" class="menu-button text-2xl">ИГРАТЬ</button>
@@ -231,6 +232,7 @@
         const p1ColorSelector = document.getElementById('p1ColorSelector');
         const p2ColorSelector = document.getElementById('p2ColorSelector');
         const backToMainButton = document.getElementById('backToMainButton');
+        const greetingMessage = document.getElementById('greetingMessage');
 
         // Game settings
         const gridCells = 20; // Игровая сетка всегда 20x20
@@ -953,6 +955,13 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
+                const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
+            } else {
+                greetingMessage.classList.add('hidden');
+            }
           }
           resizeCanvas(); // Initial resize
         });
