@@ -310,9 +310,9 @@
         let restartTimeout;
         
         const __firebase_config = '{"apiKey":"AIzaSyAMDHzWzmgoRkk2YquyF1ZCt83qfC9oB0M","authDomain":"cyberdronesnake.firebaseapp.com","projectId":"cyberdronesnake"}';
-        const __app_id = 'cyber-swarm';
+        const BOT_USERNAME = "YOUR_BOT_USERNAME_HERE"; // <-- ВСТАВЬТЕ ИМЯ БОТА СЮДА
         
-        async function initializeFirebase() {
+        async function initializeFirebase(startParam) {
             try {
                 const firebaseConfig = JSON.parse(__firebase_config);
                 
@@ -336,7 +336,9 @@
                 window.firebase.onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        checkUrlForGame();
+                        if (startParam) {
+                            joinGame(startParam);
+                        }
                     }
                 });
             } catch (error) {
@@ -346,13 +348,6 @@
             }
         }
         
-        function checkUrlForGame() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const gameIdFromUrl = urlParams.get('game');
-            if (gameIdFromUrl && userId) {
-                joinGame(gameIdFromUrl);
-            }
-        }
         async function createGame() {
             isHost = true;
             gameId = crypto.randomUUID();
@@ -365,7 +360,7 @@
                 pvpSubMode: pvpSubMode,
                 status: 'waiting',
                 gameState: null,
-                guestInput: null,
+                guestInput: {x: 0, y: 0},
                 hostColor: p1Color,
                 guestColor: p2Color,
                 hostReadyForRestart: false,
@@ -374,7 +369,7 @@
             
             await window.firebase.setDoc(gameRef, gameData);
             
-            const link = `${window.location.origin}${window.location.pathname}?game=${gameId}`;
+            const link = `https://t.me/${BOT_USERNAME}?startapp=${gameId}`;
             inviteLink.value = link;
             
             modeSelection.classList.add('hidden');
@@ -419,14 +414,8 @@
                     gameContainer.classList.add('flex');
                     resizeCanvas();
                     
-                    if (isHost) {
-                        setupGame();
-                        animationFrameId = window.requestAnimationFrame(gameLoop);
-                    } else {
-                        gameActive = true;
-                        setupGame(); // Setup guest's side too
-                        animationFrameId = window.requestAnimationFrame(gameLoop);
-                    }
+                    setupGame();
+                    animationFrameId = window.requestAnimationFrame(gameLoop);
                 }
                 
                 if (gameActive) {
@@ -434,11 +423,14 @@
                         if (data.guestInput && p2) {
                              p2.velocity = data.guestInput;
                         }
-                    } else {
+                    } else { // Guest logic
                         const serverState = data.gameState ? JSON.parse(data.gameState) : null;
                         if (serverState) {
                            p1 = serverState.p1;
-                           if(p2) p2.swarm = serverState.p2.swarm; // Only sync guest swarm, not velocity
+                           if(p2) { // Keep local velocity, update swarm from server
+                               p2.swarm = serverState.p2.swarm;
+                               p2.score = serverState.p2.score;
+                           }
                            battery = serverState.battery;
                            bonusBattery = serverState.bonusBattery;
                            weaponPickup = serverState.weaponPickup;
@@ -555,36 +547,33 @@
             const keyPressed = event.key.toLowerCase();
             let player;
             let isGuestControl = false;
-
             if (gameMode === 'single') {
                 player = p1;
             } else if (gameMode === 'pvp') {
                 if (isHost) {
                     player = p1;
                 } else {
-                    player = p2; // Guest controls P2
+                    player = p2;
                     isGuestControl = true;
                 }
             }
-
             if (!player || player.changingDirection) return;
-
             let newVelocity = null;
-            const goingUp = player.velocity.y === -1, goingDown = player.velocity.y === 1, goingRight = player.velocity.x === 1;
-            
-            const isP1Controls = keyPressed === 'arrowup' || keyPressed === 'arrowdown' || keyPressed === 'arrowleft' || keyPressed === 'arrowright';
-            const isP2Controls = keyPressed === 'w' || keyPressed === 's' || keyPressed === 'a' || keyPressed === 'd';
+            const { velocity } = player;
+            const goingUp = velocity.y === -1, goingDown = velocity.y === 1, goingRight = velocity.x === 1;
+            const isP1Controls = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(keyPressed);
+            const isP2Controls = ['w', 's', 'a', 'd'].includes(keyPressed);
 
-            if ((gameMode === 'pvp' && isHost && isP1Controls) || (gameMode==='single' && isP1Controls)) {
+            if ((isHost && isP1Controls) || (gameMode === 'single' && isP1Controls)) {
                 if (keyPressed === "arrowup" && !goingDown) newVelocity = { x: 0, y: -1 };
                 if (keyPressed === "arrowdown" && !goingUp) newVelocity = { x: 0, y: 1 };
                 if (keyPressed === "arrowleft" && !goingRight) newVelocity = { x: -1, y: 0 };
-                if (keyPressed === "arrowright" && (player.velocity.x !== -1)) newVelocity = { x: 1, y: 0 };
-            } else if (gameMode === 'pvp' && !isHost && isP2Controls) {
+                if (keyPressed === "arrowright" && (velocity.x !== -1)) newVelocity = { x: 1, y: 0 };
+            } else if (!isHost && isP2Controls) {
                 if (keyPressed === "w" && !goingDown) newVelocity = { x: 0, y: -1 };
                 if (keyPressed === "s" && !goingUp) newVelocity = { x: 0, y: 1 };
                 if (keyPressed === "a" && !goingRight) newVelocity = { x: -1, y: 0 };
-                if (keyPressed === "d" && (player.velocity.x !== -1)) newVelocity = { x: 1, y: 0 };
+                if (keyPressed === "d" && (velocity.x !== -1)) newVelocity = { x: 1, y: 0 };
             }
 
             if (newVelocity) {
@@ -679,12 +668,8 @@
         function draw(){ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);if(obstacles.length>0){ctx.fillStyle="#4b5563";ctx.shadowColor="#9ca3af";ctx.shadowBlur=10;obstacles.forEach(e=>ctx.fillRect(e.x*gridSize,e.y*gridSize,gridSize,gridSize))}ctx.shadowColor="#f59e0b";ctx.shadowBlur=15;ctx.fillStyle="#f59e0b";ctx.fillRect(battery.x*gridSize+5,battery.y*gridSize+2,gridSize-10,gridSize-4);ctx.fillStyle="#fbbf24";ctx.fillRect(battery.x*gridSize+7,battery.y*gridSize,gridSize-14,2);if(bonusBattery){ctx.shadowColor="#3b82f6";ctx.shadowBlur=15;ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(bonusBattery.x*gridSize+gridSize/2,bonusBattery.y*gridSize+gridSize/2,gridSize/2.5,0,2*Math.PI);ctx.fill();ctx.fillStyle="#93c5fd";ctx.fillRect(bonusBattery.x*gridSize+gridSize/2-gridSize/8,bonusBattery.y*gridSize+gridSize/2-gridSize/4,gridSize/4,gridSize/2);ctx.fillRect(bonusBattery.x*gridSize+gridSize/2-gridSize/4,bonusBattery.y*gridSize+gridSize/2-gridSize/8,gridSize/2,gridSize/4)}if(weaponPickup){let e;switch(weaponPickup.type){case"weak":e="#22c55e";break;case"medium":e="#eab308";break;case"strong":e="#ef4444"}ctx.fillStyle=e;ctx.shadowColor=e;ctx.shadowBlur=15;ctx.beginPath();ctx.moveTo(weaponPickup.x*gridSize+gridSize/2,weaponPickup.y*gridSize+gridSize/2-gridSize/3);ctx.lineTo(weaponPickup.x*gridSize+gridSize/2+gridSize/3,weaponPickup.y*gridSize+gridSize/2+gridSize/6);ctx.lineTo(weaponPickup.x*gridSize+gridSize/2-gridSize/3,weaponPickup.y*gridSize+gridSize/2+gridSize/6);ctx.closePath();ctx.fill()}if(p1)p1.swarm.forEach((e,t)=>drawDrone(e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawDrone(e.x*gridSize,e.y*gridSize,p2Color,0===t));const e=e=>{if(0===e.length)return;ctx.fillStyle="#f0fdf4";ctx.shadowColor="#f0fdf4";ctx.shadowBlur=10;e.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/5,0,2*Math.PI);ctx.fill()})};if(p1)e(p1.bullets);if(p2)e(p2.bullets);if(staticTurret){const t="#ff2d75";ctx.fillStyle=t;ctx.shadowColor=t;ctx.shadowBlur=15;ctx.fillRect(staticTurret.x*gridSize,staticTurret.y*gridSize,gridSize,gridSize);if(1===staticTurretDirection.x)ctx.fillRect(staticTurret.x*gridSize,staticTurret.y*gridSize+gridSize/4,1.5*gridSize,gridSize/2);else if(-1===staticTurretDirection.x)ctx.fillRect(staticTurret.x*gridSize-gridSize/2,staticTurret.y*gridSize+gridSize/4,1.5*gridSize,gridSize/2);else if(1===staticTurretDirection.y)ctx.fillRect(staticTurret.x*gridSize+gridSize/4,staticTurret.y*gridSize,.5*gridSize,1.5*gridSize);else if(-1===staticTurretDirection.y)ctx.fillRect(staticTurret.x*gridSize+gridSize/4,staticTurret.y*gridSize-gridSize/2,.5*gridSize,1.5*gridSize);staticBullets.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/3,0,2*Math.PI);ctx.fill()})}if(mobileTurret){const t="#a855f7";ctx.fillStyle=t;ctx.shadowColor=t;ctx.shadowBlur=15;ctx.beginPath();ctx.arc(mobileTurret.x*gridSize+gridSize/2,mobileTurret.y*gridSize+gridSize/2,gridSize/2.5,0,2*Math.PI);ctx.fill();mobileTurretBullets.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/4,0,2*Math.PI);ctx.fill()})}ctx.shadowBlur=0}
         function getUnoccupiedPosition(){let e;const t=[...p1.swarm,...p2?p2.swarm:[],battery,weaponPickup,bonusBattery,...obstacles];if(staticTurret)t.push(staticTurret);if(mobileTurret)t.push(mobileTurret);do{e={x:Math.floor(Math.random()*gridCells),y:Math.floor(Math.random()*gridCells)}}while(t.some(t=>t&&t.x===e.x&&t.y===e.y));return e}
         function generateBattery(){const e=getUnoccupiedPosition();battery.x=e.x;battery.y=e.y}
-        function endGame(e={}){if (!gameActive && gameMode === 'pvp' && !isHost) {
-            // Guest logic to display end screen
-        } else if (!gameActive) {
-            return;
-        }
-        gameActive=false;touchControls.classList.add("hidden");if("single"===gameMode){e.p1Won?gameStats[difficulty].wins++:gameStats[difficulty].losses++;saveStats();gameOverMessage.textContent=e.p1Won?"ПОБЕДА!":"СВЯЗЬ С РОЕМ ПОТЕРЯНА";gameOverMessage.style.color=e.p1Won?"#22c55e":"#ef4444";finalScoreContainer.innerHTML=`ОЧКИ: <span class="text-yellow-400">${p1.score}</span>`;finalScoreContainer.classList.remove("hidden")}else if("pvp"===gameMode){if("points"===pvpSubMode){let t=0;p1.score>p2.score?t=1:p2.score>p1.score&&(t=2);if(0===t){gameOverMessage.textContent="НИЧЬЯ!";gameOverMessage.style.color="#ffffff"}else{gameOverMessage.textContent=`ИГРОК ${t} ПОБЕДИЛ!`;gameOverMessage.style.color=1===t?p1Color:p2Color}finalScoreContainer.innerHTML=`\n                        Очки Игрока 1: <span style="color: ${p1Color};">${p1.score}</span> | \n                        Очки Игрока 2: <span style="color: ${p2Color};">${p2.score}</span>\n                    `}else{let t=0;e.p1WonRace?t=1:e.p2WonRace?t=2:e.p1Crashed&&!e.p2Crashed?t=2:e.p2Crashed&&!e.p1Crashed?t=1:e.p1Crashed&&e.p2Crashed&&(gameOverMessage.textContent="НИЧЬЯ!",gameOverMessage.style.color="#ffffff");if(0!==t){gameOverMessage.textContent=`ИГРОК ${t} ПОБЕДИЛ!`;gameOverMessage.style.color=1===t?p1Color:p2Color}finalScoreContainer.innerHTML=`\n                        Дроны Игрока 1: <span style="color: ${p1Color};">${p1.swarm.length}</span> | \n                        Дроны Игрока 2: <span style="color: ${p2Color};">${p2.swarm.length}</span>\n                    `}finalScoreContainer.classList.remove("hidden")}gameOverElement.classList.remove("hidden");clearTimeout(bonusBatterySpawnTimeout);clearTimeout(bonusBatteryDespawnTimeout);clearTimeout(weaponSpawnTimeout);window.cancelAnimationFrame(animationFrameId); restartButton.disabled = false;}
+        function endGame(e={}){if (!gameActive) return;
+        gameActive=false;touchControls.classList.add("hidden");if("single"===gameMode){e.p1Won?gameStats[difficulty].wins++:gameStats[difficulty].losses++;saveStats();gameOverMessage.textContent=e.p1Won?"ПОБЕДА!":"СВЯЗЬ С РОЕМ ПОТЕРЯНА";gameOverMessage.style.color=e.p1Won?"#22c55e":"#ef4444";finalScoreContainer.innerHTML=`ОЧКИ: <span class="text-yellow-400">${p1.score}</span>`;finalScoreContainer.classList.remove("hidden")}else if("pvp"===gameMode){if (isHost) { const gameRef = window.firebase.doc(db, "pvp_games", gameId); window.firebase.updateDoc(gameRef, { status: 'finished', result: e, gameState: null }); } if("points"===pvpSubMode){let t=0;p1.score>p2.score?t=1:p2.score>p1.score&&(t=2);if(0===t){gameOverMessage.textContent="НИЧЬЯ!";gameOverMessage.style.color="#ffffff"}else{gameOverMessage.textContent=`ИГРОК ${t} ПОБЕДИЛ!`;gameOverMessage.style.color=1===t?p1Color:p2Color}finalScoreContainer.innerHTML=`\n                        Очки Игрока 1: <span style="color: ${p1Color};">${p1.score}</span> | \n                        Очки Игрока 2: <span style="color: ${p2Color};">${p2.score}</span>\n                    `}else{let t=0;e.p1WonRace?t=1:e.p2WonRace?t=2:e.p1Crashed&&!e.p2Crashed?t=2:e.p2Crashed&&!e.p1Crashed?t=1:e.p1Crashed&&e.p2Crashed&&(gameOverMessage.textContent="НИЧЬЯ!",gameOverMessage.style.color="#ffffff");if(0!==t){gameOverMessage.textContent=`ИГРОК ${t} ПОБЕДИЛ!`;gameOverMessage.style.color=1===t?p1Color:p2Color}finalScoreContainer.innerHTML=`\n                        Дроны Игрока 1: <span style="color: ${p1Color};">${p1.swarm.length}</span> | \n                        Дроны Игрока 2: <span style="color: ${p2Color};">${p2.swarm.length}</span>\n                    `}finalScoreContainer.classList.remove("hidden")}gameOverElement.classList.remove("hidden");clearTimeout(bonusBatterySpawnTimeout);clearTimeout(bonusBatteryDespawnTimeout);clearTimeout(weaponSpawnTimeout);window.cancelAnimationFrame(animationFrameId); restartButton.disabled = false;}
         function setupTouchControls(){const e=document.getElementById("up"),t=document.getElementById("down"),o=document.getElementById("left"),s=document.getElementById("right");const l=(l,n)=>{l.preventDefault();if(!gameActive||!p1||p1.changingDirection)return;let i=null;const a=p1.velocity.y===-1,r=p1.velocity.y===1,d=p1.velocity.x===1,c=()=>p1.velocity.x===-1;if("up"===n&&!r)i={x:0,y:-1};else if("down"===n&&!a)i={x:0,y:1};else if("left"===n&&!d)i={x:-1,y:0};else if("right"===n&&!c())i={x:1,y:0};if(i){p1.changingDirection=true;p1.velocity=i}};["touchstart","mousedown"].forEach(n=>{e.addEventListener(n,e=>l(e,"up"));t.addEventListener(n,e=>l(e,"down"));o.addEventListener(n,e=>l(e,"left"));s.addEventListener(n,e=>l(e,"right"))})}
         function returnToMenu(){gameActive=false;if(animationFrameId)window.cancelAnimationFrame(animationFrameId);clearTimeout(bonusBatterySpawnTimeout);clearTimeout(bonusBatteryDespawnTimeout);clearTimeout(weaponSpawnTimeout);gameContainer.classList.add("hidden");gameContainer.classList.remove("flex");mainMenu.classList.remove("hidden");modeSelection.classList.remove("hidden");difficultySelection.classList.add("hidden");pvpModeSelection.classList.add("hidden");settingsMenu.classList.add("hidden");statsMenu.classList.add("hidden");gameOverElement.classList.add("hidden")}
         const debounce=(e,t)=>{let o;return function(...s){clearTimeout(o);o=setTimeout(()=>e.apply(this,s),t)}};
@@ -722,28 +707,33 @@
         restartButton.addEventListener("click",()=>{if("pvp"===gameMode)setRestartReady();else{setupGame();animationFrameId=window.requestAnimationFrame(gameLoop)}});
         backToMenuButton.addEventListener("click",returnToMenu);
         window.addEventListener("load",()=>{
+            let startParam = null;
+            try{const e=localStorage.getItem("cyberSwarmStats");if(e){const t=JSON.parse(e);for(const o in gameStats)if(t[o]){gameStats[o].wins=t[o].wins||0;gameStats[o].losses=t[o].losses||0;gameStats[o].dronesCollected=t[o].dronesCollected||0}}}catch(e){console.error("Failed to load stats from localStorage",e)}
             try {
                 const tg = window.Telegram.WebApp;
                 tg.ready();
                 tg.expand();
-                if (tg.initDataUnsafe?.user?.first_name) {
-                    const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                    greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
-                } else {
-                    greetingMessage.classList.add('hidden');
+                if (tg.initDataUnsafe) {
+                    if (tg.initDataUnsafe.start_param) {
+                        startParam = tg.initDataUnsafe.start_param;
+                    }
+                    if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
+                        const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
+                    } else {
+                        greetingMessage.classList.add('hidden');
+                    }
                 }
             } catch (e) {
                 console.error("Telegram WebApp script error:", e);
             }
             
-            try{const e=localStorage.getItem("cyberSwarmStats");if(e){const t=JSON.parse(e);for(const o in gameStats)if(t[o]){gameStats[o].wins=t[o].wins||0;gameStats[o].losses=t[o].losses||0;gameStats[o].dronesCollected=t[o].dronesCollected||0}}}catch(e){console.error("Failed to load stats from localStorage",e)}
-            
             resizeCanvas();
-            initializeFirebase()
+            initializeFirebase(startParam);
         });
         window.addEventListener("resize",debounce(resizeCanvas,100));
         // Prevent pull-to-refresh
-        window.addEventListener('touchmove', function(event) {
+        document.body.addEventListener('touchmove', function(event) {
             event.preventDefault();
         }, { passive: false });
         populateColorSelectors();
