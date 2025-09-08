@@ -307,8 +307,6 @@
         let gameId, isHost, unsubscribeGame;
         let restartTimeout;
         
-        // --- ВАЖНО: НАСТРОЙКА FIREBASE ---
-        // Ключи были вставлены сюда.
         const __firebase_config = '{"apiKey":"AIzaSyAMDHzWzmgoRkk2YquyF1ZCt83qfC9oB0M","authDomain":"cyberdronesnake.firebaseapp.com","projectId":"cyberdronesnake"}';
         const __app_id = 'cyber-swarm';
         
@@ -693,7 +691,7 @@
         playButton.addEventListener("click",()=>{gameMode="single";modeSelection.classList.add("hidden");difficultySelection.classList.remove("hidden")});
         pvpButton.addEventListener("click",()=>{gameMode="pvp";modeSelection.classList.add("hidden");pvpModeSelection.classList.remove("hidden")});
         pvpModeSelection.addEventListener("click",e=>{"BUTTON"===e.target.tagName&&(pvpSubMode=e.target.dataset.pvpMode,pvpModeSelection.classList.add("hidden"),difficultySelection.classList.remove("hidden"))});
-        difficultySelection.addEventListener("click",e=>{"BUTTON"===e.target.tagName&&(difficulty=e.target.dataset.difficulty,mainMenu.classList.add("hidden"),gameContainer.classList.remove("hidden"),gameContainer.classList.add("flex"),resizeCanvas(),setupGame(),animationFrameId=window.requestAnimationFrame(gameLoop))});
+        difficultySelection.addEventListener("click",e=>{"BUTTON"===e.target.tagName&&(difficulty=e.target.dataset.difficulty,"pvp"===gameMode?createGame():(mainMenu.classList.add("hidden"),gameContainer.classList.remove("hidden"),gameContainer.classList.add("flex"),resizeCanvas(),setupGame(),animationFrameId=window.requestAnimationFrame(gameLoop)))});
         settingsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");settingsMenu.classList.remove("hidden");settingsMenu.classList.add("flex")});
         statsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");displayStats();statsMenu.classList.remove("hidden");statsMenu.classList.add("flex")});
         backToMainFromSettingsButton.addEventListener("click",()=>{settingsMenu.classList.add("hidden");settingsMenu.classList.remove("flex");modeSelection.classList.remove("hidden")});
