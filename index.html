@@ -207,6 +207,10 @@
              <button id="backToMainFromWaiting" class="menu-button mt-8">Назад</button>
         </div>
 
+        <div id="connectingScreen" class="hidden flex-col items-center mt-4 space-y-4 p-4">
+            <h2 class="text-3xl mb-2">ПОДКЛЮЧЕНИЕ К ИГРЕ...</h2>
+        </div>
+
         <div id="statsMenu" class="hidden flex-col items-center mt-4 space-y-4">
             <h2 class="text-3xl mb-4">СТАТИСТИКА</h2>
             <div id="statsContainer" class="space-y-4 text-left text-lg w-full max-w-sm"></div>
@@ -291,6 +295,7 @@
         const statsMenu = document.getElementById('statsMenu');
         const backToMainFromStatsButton = document.getElementById('backToMainFromStatsButton');
         const waitingRoom = document.getElementById('waitingRoom');
+        const connectingScreen = document.getElementById('connectingScreen');
         const inviteLink = document.getElementById('inviteLink');
         const copyLinkButton = document.getElementById('copyLinkButton');
         const shareLinkButton = document.getElementById('shareLinkButton');
@@ -390,7 +395,7 @@
             
             await window.firebase.setDoc(gameRef, gameData);
             
-            const link = `https://t.me/${BOT_USERNAME}/app?startapp=${gameId}`;
+            const link = `https://t.me/${BOT_USERNAME}?startapp=${gameId}`;
             inviteLink.value = link;
             
             modeSelection.classList.add('hidden');
@@ -432,6 +437,7 @@
                     visualTheme = data.theme;
                     mainMenu.classList.add('hidden');
                     waitingRoom.classList.add('hidden');
+                    connectingScreen.classList.add('hidden');
                     gameContainer.classList.remove('hidden');
                     gameContainer.classList.add('flex');
                     resizeCanvas();
@@ -692,8 +698,8 @@
         function drawMilitaryTheme(){drawMilitaryBackground();if(obstacles.length>0)obstacles.forEach(e=>drawThemedObstacle(e.x*gridSize,e.y*gridSize));if(battery)drawThemedBattery(battery.x*gridSize,battery.y*gridSize);if(bonusBattery)drawThemedBonusBattery(bonusBattery.x*gridSize,bonusBattery.y*gridSize);if(weaponPickup)drawThemedWeaponPickup(weaponPickup.x*gridSize,weaponPickup.y*gridSize,weaponPickup.type);if(p1)p1.swarm.forEach((e,t)=>drawThemedDrone("p1",e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawThemedDrone("p2",e.x*gridSize,e.y*gridSize,p2Color,0===t));if(p1)p1.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(p2)p2.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(staticTurret){drawThemedStaticTurret(staticTurret.x*gridSize,staticTurret.y*gridSize,staticTurretDirection);staticBullets.forEach(e=>drawThemedTurretBullet("static",e.x*gridSize,e.y*gridSize))}if(mobileTurret){drawThemedMobileTurret(mobileTurret.x*gridSize,mobileTurret.y*gridSize);mobileTurretBullets.forEach(e=>drawThemedTurretBullet("mobile",e.x*gridSize,e.y*gridSize))}}
         function drawHalloweenTheme(){drawHalloweenBackground();if(obstacles.length>0)obstacles.forEach(e=>drawThemedObstacle(e.x*gridSize,e.y*gridSize));if(battery)drawThemedBattery(battery.x*gridSize,battery.y*gridSize);if(bonusBattery)drawThemedBonusBattery(bonusBattery.x*gridSize,bonusBattery.y*gridSize);if(weaponPickup)drawThemedWeaponPickup(weaponPickup.x*gridSize,weaponPickup.y*gridSize,weaponPickup.type);if(p1)p1.swarm.forEach((e,t)=>drawThemedDrone("p1",e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawThemedDrone("p2",e.x*gridSize,e.y*gridSize,p2Color,0===t));if(p1)p1.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(p2)p2.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(staticTurret){drawThemedStaticTurret(staticTurret.x*gridSize,staticTurret.y*gridSize,staticTurretDirection);staticBullets.forEach(e=>drawThemedTurretBullet("static",e.x*gridSize,e.y*gridSize))}if(mobileTurret){drawThemedMobileTurret(mobileTurret.x*gridSize,mobileTurret.y*gridSize);mobileTurretBullets.forEach(e=>drawThemedTurretBullet("mobile",e.x*gridSize,e.y*gridSize))}}
         function drawNeonBackground(){ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height)}
-        function drawMilitaryBackground(){ctx.fillStyle="#5F5341";ctx.fillRect(0,0,canvas.width,canvas.height);for(let e=0;e<100;e++){ctx.fillStyle=Math.random()>.5?"#6B5B49":"#534736";ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,gridSize/4,gridSize/4)}}
-        function drawHalloweenBackground(){ctx.fillStyle="#1a0d21";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="rgba(200,200,255,0.1)";for(let e=0;e<50;e++){ctx.beginPath();ctx.arc(Math.random()*canvas.width,Math.random()*canvas.height,Math.random()*2,0,2*Math.PI);ctx.fill()}}
+        function drawMilitaryBackground(){ctx.fillStyle="#5F5341";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#534736";ctx.fillRect(canvas.width*.1,canvas.height*.2,5,5);ctx.fillRect(canvas.width*.8,canvas.height*.7,5,5);ctx.fillStyle="#6B5B49";ctx.fillRect(canvas.width*.3,canvas.height*.6,5,5);ctx.fillRect(canvas.width*.6,canvas.height*.1,5,5)}
+        function drawHalloweenBackground(){ctx.fillStyle="#1a0d21";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="rgba(200,200,255,0.2)";ctx.beginPath();ctx.arc(canvas.width*.2,canvas.height*.3,2,0,2*Math.PI);ctx.fill();ctx.beginPath();ctx.arc(canvas.width*.7,canvas.height*.8,1.5,0,2*Math.PI);ctx.fill();ctx.beginPath();ctx.arc(canvas.width*.9,canvas.height*.1,1,0,2*Math.PI);ctx.fill()}
         function drawThemedObstacle(e,t){switch(visualTheme){case"military":ctx.fillStyle="#696969",ctx.fillRect(e,t,gridSize,gridSize),ctx.fillStyle="#808080",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2);break;case"halloween":ctx.fillStyle="#605268",ctx.fillRect(e+gridSize/4,t+gridSize/5,gridSize/2,gridSize-gridSize/5),ctx.beginPath(),ctx.moveTo(e+gridSize/4,t+gridSize/5),ctx.lineTo(e+gridSize/2,t),ctx.lineTo(e+3*gridSize/4,t+gridSize/5),ctx.closePath(),ctx.fill();break;default:ctx.fillStyle="#4b5563",ctx.shadowColor="#9ca3af",ctx.shadowBlur=10,ctx.fillRect(e,t,gridSize,gridSize),ctx.shadowBlur=0}}
         function drawThemedBattery(e,t){switch(visualTheme){case"military":ctx.fillStyle="#8B0000",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2),ctx.fillStyle="#A9A9A9",ctx.fillRect(e+gridSize/3,t+gridSize/8,gridSize/3,gridSize/4);break;case"halloween":const o=["#FFC107","#FF5722","#4CAF50","#9C27B0"];ctx.fillStyle=o[Math.floor(Date.now()/500)%o.length],ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;default:ctx.shadowColor="#f59e0b",ctx.shadowBlur=15,ctx.fillStyle="#f59e0b",ctx.fillRect(e+5,t+2,gridSize-10,gridSize-4),ctx.fillStyle="#fbbf24",ctx.fillRect(e+7,t,gridSize-14,2),ctx.shadowBlur=0}}
         function drawThemedBonusBattery(e,t){switch(visualTheme){case"military":ctx.fillStyle="#00008B",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2),ctx.fillStyle="#ADD8E6",ctx.fillRect(e+gridSize/3,t+gridSize/8,gridSize/3,gridSize/4);break;case"halloween":const o=["#03A9F4","#2196F3","#00BCD4"];ctx.fillStyle=o[Math.floor(Date.now()/500)%o.length],ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;default:ctx.shadowColor="#3b82f6",ctx.shadowBlur=15,ctx.fillStyle="#3b82f6";const s=e+gridSize/2,l=t+gridSize/2;ctx.beginPath(),ctx.arc(s,l,gridSize/2.5,0,2*Math.PI),ctx.fill(),ctx.fillStyle="#93c5fd",ctx.fillRect(s-gridSize/8,l-gridSize/4,gridSize/4,gridSize/2),ctx.fillRect(s-gridSize/4,l-gridSize/8,gridSize/2,gridSize/4),ctx.shadowBlur=0}}
@@ -716,7 +722,7 @@
         pvpButton.addEventListener("click",()=>{gameMode="pvp";modeSelection.classList.add("hidden");pvpModeSelection.classList.remove("hidden")});
         pvpModeSelection.addEventListener("click",e=>{"BUTTON"===e.target.tagName&&(pvpSubMode=e.target.dataset.pvpMode,pvpModeSelection.classList.add("hidden"),difficultySelection.classList.remove("hidden"))});
         difficultySelection.addEventListener("click",e=>{"BUTTON"===e.target.tagName&&(difficulty=e.target.dataset.difficulty,"pvp"===gameMode?createGame():(mainMenu.classList.add("hidden"),gameContainer.classList.remove("hidden"),gameContainer.classList.add("flex"),resizeCanvas(),setupGame(),animationFrameId=window.requestAnimationFrame(gameLoop)))});
-        settingsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");settingsMenu.classList.remove("hidden");settingsMenu.classList.add("flex")});
+        settingsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");settingsMenu.classList.remove("hidden");settingsMenu.classList.add("flex"); populateThemeSelector();});
         statsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");displayStats();statsMenu.classList.remove("hidden");statsMenu.classList.add("flex")});
         backToMainFromSettingsButton.addEventListener("click",()=>{settingsMenu.classList.add("hidden");settingsMenu.classList.remove("flex");modeSelection.classList.remove("hidden")});
         backToMainFromStatsButton.addEventListener("click",()=>{statsMenu.classList.add("hidden");statsMenu.classList.remove("flex");modeSelection.classList.remove("hidden")});
@@ -751,9 +757,8 @@
             }
         });
         function populateColorSelectors(){const e=(t,o)=>{t.innerHTML="";colors.forEach(s=>{const l=document.createElement("div");l.className="color-swatch";l.style.backgroundColor=s;l.dataset.color=s;if(1===o&&s===p1Color||2===o&&s===p2Color)l.classList.add("selected");l.addEventListener("click",()=>{if(1===o)p1Color=s;else p2Color=s;Array.from(t.children).forEach(e=>e.classList.remove("selected"));l.classList.add("selected")});t.appendChild(l)})};e(p1ColorSelector,1);e(p2ColorSelector,2)}
-        function populateThemeSelector(){const themes=[{id:"neon",name:"НЕОН"},{id:"military",name:"МИЛИТАРИ"},{id:"halloween",name:"ХЭЛЛОУИН"}];themeSelector.innerHTML="";themes.forEach(theme=>{const wrapper=document.createElement("div");wrapper.className="theme-swatch flex flex-col items-center cursor-pointer p-1",wrapper.dataset.theme=theme.id;const previewCanvas=document.createElement("canvas");previewCanvas.width=40,previewCanvas.height=40;const pctx=previewCanvas.getContext("2d");drawThemePreview(pctx,theme.id);const label=document.createElement("span");label.className="text-xs mt-1 text-white",label.textContent=theme.name,wrapper.appendChild(previewCanvas),wrapper.appendChild(label),theme.id===visualTheme&&wrapper.classList.add("selected"),wrapper.addEventListener("click",()=>{visualTheme=theme.id,Array.from(themeSelector.children).forEach(child=>child.classList.remove("selected")),wrapper.classList.add("selected");try{localStorage.setItem("cyberSwarmTheme",visualTheme)}catch(e){console.error("Failed to save theme",e)}}),themeSelector.appendChild(wrapper)})}
-        function drawThemePreview(pctx,themeId){pctx.clearRect(0,0,40,40);switch(themeId){case"neon":pctx.fillStyle="#0a0a0a",pctx.fillRect(0,0,40,40),pctx.fillStyle="#08d9d6",pctx.fillRect(15,15,10,10),pctx.fillStyle="rgba(255, 255, 255, 0.9)",pctx.beginPath(),pctx.arc(20,20,3,0,2*Math.PI),pctx.fill();break;case"military":pctx.fillStyle="#556B2F",pctx.fillRect(0,0,40,40),pctx.fillStyle="#6B4423",pctx.fillRect(0,25,40,2),pctx.fillStyle="#BDB76B",pctx.beginPath(),pctx.arc(10,15,5,0,2*Math.PI),pctx.fill(),pctx.fillStyle="#808000",pctx.fillRect(25,25,10,10);break;case"halloween":pctx.fillStyle="#2c1338",pctx.fillRect(0,0,40,40),pctx.fillStyle="#ff7900",pctx.beginPath(),pctx.arc(20,20,8,0,2*Math.PI),pctx.fill(),pctx.fillStyle="black",pctx.fillRect(15,15,4,4),pctx.fillRect(21,15,4,4)}}
-        settingsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");settingsMenu.classList.remove("hidden");settingsMenu.classList.add("flex"); populateThemeSelector();});
+        function populateThemeSelector(){const themes=[{id:"halloween",name:"ХЭЛЛОУИН"},{id:"military",name:"МИЛИТАРИ"},{id:"neon",name:"НЕОН"}];themeSelector.innerHTML="";themes.forEach(theme=>{const wrapper=document.createElement("div");wrapper.className="theme-swatch";wrapper.dataset.theme=theme.id;const previewCanvas=document.createElement("canvas");previewCanvas.width=48,previewCanvas.height=48;const pctx=previewCanvas.getContext("2d");drawThemePreview(pctx,theme.id);wrapper.appendChild(previewCanvas),theme.id===visualTheme&&wrapper.classList.add("selected"),wrapper.addEventListener("click",()=>{visualTheme=theme.id,Array.from(themeSelector.children).forEach(child=>child.classList.remove("selected")),wrapper.classList.add("selected");try{localStorage.setItem("cyberSwarmTheme",visualTheme)}catch(e){console.error("Failed to save theme",e)}}),themeSelector.appendChild(wrapper)})}
+        function drawThemePreview(pctx,themeId){pctx.clearRect(0,0,48,48);switch(themeId){case"neon":pctx.fillStyle="#0a0a0a",pctx.fillRect(0,0,48,48),pctx.fillStyle="#08d9d6",pctx.fillRect(19,19,10,10),pctx.fillStyle="rgba(255, 255, 255, 0.9)",pctx.beginPath(),pctx.arc(24,24,4,0,2*Math.PI),pctx.fill();break;case"military":pctx.fillStyle="#556B2F",pctx.fillRect(0,0,48,48),pctx.fillStyle="#6B4423",pctx.fillRect(0,30,48,3),pctx.fillStyle="#BDB76B",pctx.beginPath(),pctx.arc(12,18,6,0,2*Math.PI),pctx.fill(),pctx.fillStyle="#808000",pctx.fillRect(30,30,12,12);break;case"halloween":pctx.fillStyle="#2c1338",pctx.fillRect(0,0,48,48),pctx.fillStyle="#ff7900",pctx.beginPath(),pctx.arc(24,24,10,0,2*Math.PI),pctx.fill(),pctx.fillStyle="black",pctx.fillRect(18,18,5,5),pctx.fillRect(25,18,5,5)}}
         restartButton.addEventListener("click",()=>{if("pvp"===gameMode)setRestartReady();else{setupGame();animationFrameId=window.requestAnimationFrame(gameLoop)}});
         backToMenuButton.addEventListener("click",returnToMenu);
         window.addEventListener("load",()=>{
@@ -767,6 +772,9 @@
                 if (tg.initDataUnsafe) {
                     if (tg.initDataUnsafe.start_param) {
                         startParam = tg.initDataUnsafe.start_param;
+                        mainMenu.classList.add('hidden');
+                        connectingScreen.classList.remove('hidden');
+                        connectingScreen.classList.add('flex');
                     }
                     if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
                         const name = tg.initDataUnsafe.user.first_name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
