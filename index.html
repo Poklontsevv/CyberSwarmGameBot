@@ -147,11 +147,25 @@
             border-radius: 50%;
             cursor: pointer;
             border: 3px solid transparent;
-            transition: border-color 0.2s ease;
+            transition: all 0.2s ease;
         }
         .color-swatch.selected {
             border-color: #ffffff;
             box-shadow: 0 0 10px #ffffff;
+            transform: scale(1.1);
+        }
+        .theme-swatch {
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 48px;
+            height: 48px;
+        }
+        .theme-swatch.selected {
+            border-color: #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -200,7 +214,11 @@
         </div>
         
         <div id="settingsMenu" class="hidden flex-col items-center mt-4 space-y-4">
-            <h2 class="text-3xl mb-4">НАСТРОЙКИ ЦВЕТА</h2>
+            <h2 class="text-3xl mb-4">НАСТРОЙКИ</h2>
+             <div class="flex items-center space-x-4">
+                <span class="text-xl w-32 text-right">Стиль:</span>
+                <div id="themeSelector" class="flex space-x-2"></div>
+            </div>
             <div class="flex items-center space-x-4">
                 <span class="text-xl w-32 text-right">Игрок 1:</span>
                 <div id="p1ColorSelector" class="flex space-x-2"></div>
@@ -266,6 +284,7 @@
         const settingsMenu = document.getElementById('settingsMenu');
         const p1ColorSelector = document.getElementById('p1ColorSelector');
         const p2ColorSelector = document.getElementById('p2ColorSelector');
+        const themeSelector = document.getElementById('themeSelector');
         const backToMainFromSettingsButton = document.getElementById('backToMainFromSettingsButton');
         const greetingMessage = document.getElementById('greetingMessage');
         const statsButton = document.getElementById('statsButton');
@@ -296,6 +315,7 @@
         const colors = ['#08d9d6', '#f97316', '#ff2d75', '#22c55e', '#a855f7'];
         let p1Color = colors[0];
         let p2Color = colors[1];
+        let visualTheme = 'halloween'; // neon, military, halloween
         let obstacles = [];
         
         let gameStats = {
@@ -310,7 +330,7 @@
         let restartTimeout;
         
         const __firebase_config = '{"apiKey":"AIzaSyAMDHzWzmgoRkk2YquyF1ZCt83qfC9oB0M","authDomain":"cyberdronesnake.firebaseapp.com","projectId":"cyberdronesnake"}';
-        const BOT_USERNAME = "CyberSwarmGameBot"; // <-- ВАЖНО: Имя вашего бота без @
+        const BOT_USERNAME = "CyberSwarmGameBot"; 
         
         async function initializeFirebase(startParam) {
             try {
@@ -365,6 +385,7 @@
                 guestColor: p2Color,
                 hostReadyForRestart: false,
                 guestReadyForRestart: false,
+                theme: visualTheme
             };
             
             await window.firebase.setDoc(gameRef, gameData);
@@ -408,6 +429,7 @@
                     pvpSubMode = data.pvpSubMode;
                     p1Color = data.hostColor;
                     p2Color = data.guestColor;
+                    visualTheme = data.theme;
                     mainMenu.classList.add('hidden');
                     waitingRoom.classList.add('hidden');
                     gameContainer.classList.remove('hidden');
@@ -664,8 +686,23 @@
         function update(){updatePlayer(p1);if(p2)updatePlayer(p2);let e=p1.swarm.length>0?p1.swarm[0]:null;if("pvp"===gameMode&&mobileTurret&&p1.swarm.length>0&&p2&&p2.swarm.length>0){const t=Math.abs(p1.swarm[0].x-mobileTurret.x)+Math.abs(p1.swarm[0].y-mobileTurret.y),o=Math.abs(p2.swarm[0].x-mobileTurret.x)+Math.abs(p2.swarm[0].y-mobileTurret.y);if(o<t)e=p2.swarm[0]}if(disabledStaticTurret&&Date.now()>disabledStaticTurret.respawnTime){const t=[...p1.swarm,...p2?p2.swarm:[],battery,mobileTurret,weaponPickup,bonusBattery,...obstacles].filter(Boolean);const o=spawnStaticTurret(t);staticTurret=o.turret;staticTurretDirection=o.direction;disabledStaticTurret=null}if(disabledMobileTurret&&Date.now()>disabledMobileTurret.respawnTime){mobileTurret=getUnoccupiedPosition();disabledMobileTurret=null}if(staticTurret&&Date.now()-staticLastFireTime>staticFireRate){staticBullets.push({x:staticTurret.x+staticTurretDirection.x,y:staticTurret.y+staticTurretDirection.y,vx:staticTurretDirection.x,vy:staticTurretDirection.y});staticLastFireTime=Date.now()}for(let t=staticBullets.length-1;t>=0;t--){const o=staticBullets[t];o.x+=o.vx;o.y+=o.vy;if(o.x<0||o.x>=gridCells||o.y<0||o.y>=gridCells||obstacles.some(e=>e.x===o.x&&e.y===o.y))staticBullets.splice(t,1)}if(mobileTurret&&e){moveCounter++;if(moveCounter>mobileMoveInterval){moveCounter=0;const t=e.x-mobileTurret.x,o=e.y-mobileTurret.y;if(Math.abs(t)>Math.abs(o))mobileTurret.x+=Math.sign(t);else mobileTurret.y+=Math.sign(o)}if(Date.now()-lastMobileFireTime>mobileFireRate){const t=e.x-mobileTurret.x,o=e.y-mobileTurret.y;let s=0,l=0;if(Math.abs(t)>Math.abs(o))s=Math.sign(t);else l=Math.sign(o);mobileTurretBullets.push({x:mobileTurret.x+s,y:mobileTurret.y+l,vx:s,vy:l});lastMobileFireTime=Date.now()}}for(let t=mobileTurretBullets.length-1;t>=0;t--){const o=mobileTurretBullets[t];o.x+=o.vx;o.y+=o.vy;if(o.x<0||o.x>=gridCells||o.y<0||o.y>=gridCells||obstacles.some(e=>e.x===o.x&&e.y===o.y))mobileTurretBullets.splice(t,1)}if("single"===gameMode&&p1.score>=20)return void endGame({p1Won:true});const t=checkPlayerCollision(p1),o=p2?checkPlayerCollision(p2):false;if(t||o)return void endGame({p1Crashed:t,p2Crashed:o});if("pvp"===gameMode&&"race"===pvpSubMode){if(p1.swarm.length>=20)return void endGame({p1WonRace:true});if(p2.swarm.length>=20)return void endGame({p2WonRace:true})}const s=document.getElementById("score1");if(s)s.textContent="pvp"===gameMode&&"race"===pvpSubMode?p1.swarm.length:p1.score;if(p2){const t=document.getElementById("score2");if(t)t.textContent="race"===pvpSubMode?p2.swarm.length:p2.score}}
         function updatePlayer(e){if(!e.swarm||0===e.swarm.length)return;const t={x:e.swarm[0].x+e.velocity.x,y:e.swarm[0].y+e.velocity.y};e.swarm.unshift(t);let o=false;if(bonusBattery&&t.x===bonusBattery.x&&t.y===bonusBattery.y){o=true;if("nightmare"===difficulty)e.lastAteTime=Date.now();e.swarm.push({...e.swarm[e.swarm.length-1]});if("single"===gameMode)gameStats[difficulty].dronesCollected+=2;if("pvp"!==gameMode||"points"===pvpSubMode)e.score+=2;bonusBattery=null;clearTimeout(bonusBatteryDespawnTimeout);scheduleNextBonusBattery()}if(t.x===battery.x&&t.y===battery.y){o=true;if("nightmare"===difficulty)e.lastAteTime=Date.now();if("single"===gameMode)gameStats[difficulty].dronesCollected+=1;if("pvp"!==gameMode||"points"===pvpSubMode)e.score++;generateBattery()}if(!o)e.swarm.pop();if(weaponPickup&&t.x===weaponPickup.x&&t.y===weaponPickup.y){e.weapon=weaponPickup.type;e.weaponEndTime=Date.now()+5e3;weaponPickup=null;clearTimeout(weaponSpawnTimeout);scheduleNextWeapon()}if(e.weapon&&Date.now()>e.weaponEndTime)e.weapon=null;if("nightmare"===difficulty&&e.swarm.length>1&&Date.now()-e.lastAteTime>4e3){e.swarm.pop();e.lastAteTime=Date.now()}if(e.weapon&&(0!==e.velocity.x||0!==e.velocity.y)){let t=0;switch(e.weapon){case"weak":t=2e3;break;case"medium":t=1500;break;case"strong":t=1e3}if(Date.now()-e.lastFireTime>t){e.bullets.push({x:e.swarm[0].x+e.velocity.x,y:e.swarm[0].y+e.velocity.y,vx:e.velocity.x,vy:e.velocity.y});e.lastFireTime=Date.now()}}for(let t=e.bullets.length-1;t>=0;t--){const o=e.bullets[t];o.x+=o.vx;o.y+=o.vy;if(o.x<0||o.x>=gridCells||o.y<0||o.y>=gridCells||obstacles.some(e=>e.x===o.x&&e.y===o.y)){e.bullets.splice(t,1);continue}let s=false;if(staticTurret&&o.x===staticTurret.x&&o.y===staticTurret.y){disabledStaticTurret={respawnTime:Date.now()+1e4};staticTurret=null;s=true}if(mobileTurret&&o.x===mobileTurret.x&&o.y===mobileTurret.y){disabledMobileTurret={respawnTime:Date.now()+1e4};mobileTurret=null;s=true}if(s){if("pvp"!==gameMode||"points"===pvpSubMode)e.score+=4;e.bullets.splice(t,1)}}}
         function checkPlayerCollision(e){if(!e||0===e.swarm.length)return false;const t=e.swarm[0];if(t.x<0||t.x>=gridCells||t.y<0||t.y>=gridCells)return true;for(let o=1;o<e.swarm.length;o++)if(t.x===e.swarm[o].x&&t.y===e.swarm[o].y)return true;if(mobileTurret&&t.x===mobileTurret.x&&t.y===mobileTurret.y)return true;for(const o of staticBullets)if(t.x===o.x&&t.y===o.y)return true;for(const o of mobileTurretBullets)if(t.x===o.x&&t.y===o.y)return true;for(const o of obstacles)if(t.x===o.x&&t.y===o.y)return true;return false}
-        function drawDrone(e,t,o,s=false){ctx.shadowColor=o;ctx.shadowBlur=10;const l=gridSize/10;ctx.fillStyle=o;ctx.fillRect(e+3*l,t+3*l,4*l,4*l);ctx.fillRect(e+4*l,t,2*l,10*l);ctx.fillRect(e,t+4*l,10*l,2*l);if(s){ctx.fillStyle="rgba(255, 255, 255, 0.9)";ctx.beginPath();ctx.arc(e+5*l,t+5*l,1.5*l,0,2*Math.PI);ctx.fill()}ctx.shadowBlur=0}
-        function draw(){ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);if(obstacles.length>0){ctx.fillStyle="#4b5563";ctx.shadowColor="#9ca3af";ctx.shadowBlur=10;obstacles.forEach(e=>ctx.fillRect(e.x*gridSize,e.y*gridSize,gridSize,gridSize))}if(battery){ctx.shadowColor="#f59e0b";ctx.shadowBlur=15;ctx.fillStyle="#f59e0b";ctx.fillRect(battery.x*gridSize+5,battery.y*gridSize+2,gridSize-10,gridSize-4);ctx.fillStyle="#fbbf24";ctx.fillRect(battery.x*gridSize+7,battery.y*gridSize,gridSize-14,2)}if(bonusBattery){ctx.shadowColor="#3b82f6";ctx.shadowBlur=15;ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(bonusBattery.x*gridSize+gridSize/2,bonusBattery.y*gridSize+gridSize/2,gridSize/2.5,0,2*Math.PI);ctx.fill();ctx.fillStyle="#93c5fd";ctx.fillRect(bonusBattery.x*gridSize+gridSize/2-gridSize/8,bonusBattery.y*gridSize+gridSize/2-gridSize/4,gridSize/4,gridSize/2);ctx.fillRect(bonusBattery.x*gridSize+gridSize/2-gridSize/4,bonusBattery.y*gridSize+gridSize/2-gridSize/8,gridSize/2,gridSize/4)}if(weaponPickup){let e;switch(weaponPickup.type){case"weak":e="#22c55e";break;case"medium":e="#eab308";break;case"strong":e="#ef4444"}ctx.fillStyle=e;ctx.shadowColor=e;ctx.shadowBlur=15;ctx.beginPath();ctx.moveTo(weaponPickup.x*gridSize+gridSize/2,weaponPickup.y*gridSize+gridSize/2-gridSize/3);ctx.lineTo(weaponPickup.x*gridSize+gridSize/2+gridSize/3,weaponPickup.y*gridSize+gridSize/2+gridSize/6);ctx.lineTo(weaponPickup.x*gridSize+gridSize/2-gridSize/3,weaponPickup.y*gridSize+gridSize/2+gridSize/6);ctx.closePath();ctx.fill()}if(p1)p1.swarm.forEach((e,t)=>drawDrone(e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawDrone(e.x*gridSize,e.y*gridSize,p2Color,0===t));const e=e=>{if(0===e.length)return;ctx.fillStyle="#f0fdf4";ctx.shadowColor="#f0fdf4";ctx.shadowBlur=10;e.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/5,0,2*Math.PI);ctx.fill()})};if(p1)e(p1.bullets);if(p2)e(p2.bullets);if(staticTurret){const t="#ff2d75";ctx.fillStyle=t;ctx.shadowColor=t;ctx.shadowBlur=15;ctx.fillRect(staticTurret.x*gridSize,staticTurret.y*gridSize,gridSize,gridSize);if(1===staticTurretDirection.x)ctx.fillRect(staticTurret.x*gridSize,staticTurret.y*gridSize+gridSize/4,1.5*gridSize,gridSize/2);else if(-1===staticTurretDirection.x)ctx.fillRect(staticTurret.x*gridSize-gridSize/2,staticTurret.y*gridSize+gridSize/4,1.5*gridSize,gridSize/2);else if(1===staticTurretDirection.y)ctx.fillRect(staticTurret.x*gridSize+gridSize/4,staticTurret.y*gridSize,.5*gridSize,1.5*gridSize);else if(-1===staticTurretDirection.y)ctx.fillRect(staticTurret.x*gridSize+gridSize/4,staticTurret.y*gridSize-gridSize/2,.5*gridSize,1.5*gridSize);staticBullets.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/3,0,2*Math.PI);ctx.fill()})}if(mobileTurret){const t="#a855f7";ctx.fillStyle=t;ctx.shadowColor=t;ctx.shadowBlur=15;ctx.beginPath();ctx.arc(mobileTurret.x*gridSize+gridSize/2,mobileTurret.y*gridSize+gridSize/2,gridSize/2.5,0,2*Math.PI);ctx.fill();mobileTurretBullets.forEach(e=>{ctx.beginPath();ctx.arc(e.x*gridSize+gridSize/2,e.y*gridSize+gridSize/2,gridSize/4,0,2*Math.PI);ctx.fill()})}ctx.shadowBlur=0}
+        // ... (The entire "draw" function and its theme helpers will be here) ...
+        function draw(){switch(visualTheme){case"military":drawMilitaryTheme();break;case"halloween":drawHalloweenTheme();break;default:drawNeonTheme()}}
+        function drawNeonTheme(){drawNeonBackground();if(obstacles.length>0)obstacles.forEach(e=>drawThemedObstacle(e.x*gridSize,e.y*gridSize));if(battery)drawThemedBattery(battery.x*gridSize,battery.y*gridSize);if(bonusBattery)drawThemedBonusBattery(bonusBattery.x*gridSize,bonusBattery.y*gridSize);if(weaponPickup)drawThemedWeaponPickup(weaponPickup.x*gridSize,weaponPickup.y*gridSize,weaponPickup.type);if(p1)p1.swarm.forEach((e,t)=>drawThemedDrone("p1",e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawThemedDrone("p2",e.x*gridSize,e.y*gridSize,p2Color,0===t));if(p1)p1.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(p2)p2.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(staticTurret){drawThemedStaticTurret(staticTurret.x*gridSize,staticTurret.y*gridSize,staticTurretDirection);staticBullets.forEach(e=>drawThemedTurretBullet("static",e.x*gridSize,e.y*gridSize))}if(mobileTurret){drawThemedMobileTurret(mobileTurret.x*gridSize,mobileTurret.y*gridSize);mobileTurretBullets.forEach(e=>drawThemedTurretBullet("mobile",e.x*gridSize,e.y*gridSize))}}
+        function drawMilitaryTheme(){drawMilitaryBackground();if(obstacles.length>0)obstacles.forEach(e=>drawThemedObstacle(e.x*gridSize,e.y*gridSize));if(battery)drawThemedBattery(battery.x*gridSize,battery.y*gridSize);if(bonusBattery)drawThemedBonusBattery(bonusBattery.x*gridSize,bonusBattery.y*gridSize);if(weaponPickup)drawThemedWeaponPickup(weaponPickup.x*gridSize,weaponPickup.y*gridSize,weaponPickup.type);if(p1)p1.swarm.forEach((e,t)=>drawThemedDrone("p1",e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawThemedDrone("p2",e.x*gridSize,e.y*gridSize,p2Color,0===t));if(p1)p1.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(p2)p2.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(staticTurret){drawThemedStaticTurret(staticTurret.x*gridSize,staticTurret.y*gridSize,staticTurretDirection);staticBullets.forEach(e=>drawThemedTurretBullet("static",e.x*gridSize,e.y*gridSize))}if(mobileTurret){drawThemedMobileTurret(mobileTurret.x*gridSize,mobileTurret.y*gridSize);mobileTurretBullets.forEach(e=>drawThemedTurretBullet("mobile",e.x*gridSize,e.y*gridSize))}}
+        function drawHalloweenTheme(){drawHalloweenBackground();if(obstacles.length>0)obstacles.forEach(e=>drawThemedObstacle(e.x*gridSize,e.y*gridSize));if(battery)drawThemedBattery(battery.x*gridSize,battery.y*gridSize);if(bonusBattery)drawThemedBonusBattery(bonusBattery.x*gridSize,bonusBattery.y*gridSize);if(weaponPickup)drawThemedWeaponPickup(weaponPickup.x*gridSize,weaponPickup.y*gridSize,weaponPickup.type);if(p1)p1.swarm.forEach((e,t)=>drawThemedDrone("p1",e.x*gridSize,e.y*gridSize,p1Color,0===t));if(p2)p2.swarm.forEach((e,t)=>drawThemedDrone("p2",e.x*gridSize,e.y*gridSize,p2Color,0===t));if(p1)p1.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(p2)p2.bullets.forEach(e=>drawThemedPlayerBullet(e.x*gridSize,e.y*gridSize));if(staticTurret){drawThemedStaticTurret(staticTurret.x*gridSize,staticTurret.y*gridSize,staticTurretDirection);staticBullets.forEach(e=>drawThemedTurretBullet("static",e.x*gridSize,e.y*gridSize))}if(mobileTurret){drawThemedMobileTurret(mobileTurret.x*gridSize,mobileTurret.y*gridSize);mobileTurretBullets.forEach(e=>drawThemedTurretBullet("mobile",e.x*gridSize,e.y*gridSize))}}
+        function drawNeonBackground(){ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height)}
+        function drawMilitaryBackground(){ctx.fillStyle="#5F5341";ctx.fillRect(0,0,canvas.width,canvas.height);for(let e=0;e<100;e++){ctx.fillStyle=Math.random()>.5?"#6B5B49":"#534736";ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,gridSize/4,gridSize/4)}}
+        function drawHalloweenBackground(){ctx.fillStyle="#1a0d21";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="rgba(200,200,255,0.1)";for(let e=0;e<50;e++){ctx.beginPath();ctx.arc(Math.random()*canvas.width,Math.random()*canvas.height,Math.random()*2,0,2*Math.PI);ctx.fill()}}
+        function drawThemedObstacle(e,t){switch(visualTheme){case"military":ctx.fillStyle="#696969",ctx.fillRect(e,t,gridSize,gridSize),ctx.fillStyle="#808080",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2);break;case"halloween":ctx.fillStyle="#605268",ctx.fillRect(e+gridSize/4,t+gridSize/5,gridSize/2,gridSize-gridSize/5),ctx.beginPath(),ctx.moveTo(e+gridSize/4,t+gridSize/5),ctx.lineTo(e+gridSize/2,t),ctx.lineTo(e+3*gridSize/4,t+gridSize/5),ctx.closePath(),ctx.fill();break;default:ctx.fillStyle="#4b5563",ctx.shadowColor="#9ca3af",ctx.shadowBlur=10,ctx.fillRect(e,t,gridSize,gridSize),ctx.shadowBlur=0}}
+        function drawThemedBattery(e,t){switch(visualTheme){case"military":ctx.fillStyle="#8B0000",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2),ctx.fillStyle="#A9A9A9",ctx.fillRect(e+gridSize/3,t+gridSize/8,gridSize/3,gridSize/4);break;case"halloween":const o=["#FFC107","#FF5722","#4CAF50","#9C27B0"];ctx.fillStyle=o[Math.floor(Date.now()/500)%o.length],ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;default:ctx.shadowColor="#f59e0b",ctx.shadowBlur=15,ctx.fillStyle="#f59e0b",ctx.fillRect(e+5,t+2,gridSize-10,gridSize-4),ctx.fillStyle="#fbbf24",ctx.fillRect(e+7,t,gridSize-14,2),ctx.shadowBlur=0}}
+        function drawThemedBonusBattery(e,t){switch(visualTheme){case"military":ctx.fillStyle="#00008B",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2),ctx.fillStyle="#ADD8E6",ctx.fillRect(e+gridSize/3,t+gridSize/8,gridSize/3,gridSize/4);break;case"halloween":const o=["#03A9F4","#2196F3","#00BCD4"];ctx.fillStyle=o[Math.floor(Date.now()/500)%o.length],ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;default:ctx.shadowColor="#3b82f6",ctx.shadowBlur=15,ctx.fillStyle="#3b82f6";const s=e+gridSize/2,l=t+gridSize/2;ctx.beginPath(),ctx.arc(s,l,gridSize/2.5,0,2*Math.PI),ctx.fill(),ctx.fillStyle="#93c5fd",ctx.fillRect(s-gridSize/8,l-gridSize/4,gridSize/4,gridSize/2),ctx.fillRect(s-gridSize/4,l-gridSize/8,gridSize/2,gridSize/4),ctx.shadowBlur=0}}
+        function drawThemedWeaponPickup(e,t,o){switch(visualTheme){case"military":ctx.fillStyle="#FFD700",ctx.fillRect(e+gridSize/4,t+gridSize/4,gridSize/2,gridSize/2);break;case"halloween":ctx.fillStyle="#FFFFFF",ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;default:let s;switch(o){case"weak":s="#22c55e";break;case"medium":s="#eab308";break;case"strong":s="#ef4444"}ctx.fillStyle=s,ctx.shadowColor=s,ctx.shadowBlur=15;const l=e+gridSize/2,n=t+gridSize/2;ctx.beginPath(),ctx.moveTo(l,n-gridSize/3),ctx.lineTo(l+gridSize/3,n+gridSize/6),ctx.lineTo(l-gridSize/3,n+gridSize/6),ctx.closePath(),ctx.fill(),ctx.shadowBlur=0}}
+        function drawThemedDrone(e,t,o,s,l){switch(visualTheme){case"military":ctx.fillStyle=l?"#A9A9A9":"#808080",ctx.beginPath(),ctx.ellipse(t+gridSize/2,o+gridSize/2,gridSize/3,gridSize/2.2,0,0,2*Math.PI),ctx.fill(),ctx.fillStyle=s,ctx.beginPath(),ctx.arc(t+gridSize/2,o+gridSize/2,gridSize/5,0,2*Math.PI),ctx.fill();break;case"halloween":ctx.fillStyle="#FF8C00",ctx.beginPath(),ctx.arc(t+gridSize/2,o+gridSize/2,gridSize/2.1,0,2*Math.PI),ctx.fill(),ctx.fillStyle="#562a00",ctx.fillRect(t+gridSize/2.5,o-gridSize/10,gridSize/5,gridSize/4),ctx.fillStyle="black",l&&(ctx.fillStyle="yellow",ctx.shadowColor="yellow",ctx.shadowBlur=5),ctx.beginPath(),ctx.moveTo(t+gridSize/4,o+gridSize/3),ctx.lineTo(t+gridSize/2.5,o+gridSize/2),ctx.lineTo(t+gridSize/4,o+2*gridSize/3),ctx.fill(),ctx.beginPath(),ctx.moveTo(t+3*gridSize/4,o+gridSize/3),ctx.lineTo(t+gridSize/1.7,o+gridSize/2),ctx.lineTo(t+3*gridSize/4,o+2*gridSize/3),ctx.fill(),ctx.shadowBlur=0;break;default:drawDrone(t,o,s,l)}}
+        function drawThemedPlayerBullet(e,t){switch(visualTheme){case"military":ctx.fillStyle="#FFA500",ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/5,0,2*Math.PI),ctx.fill();break;case"halloween":ctx.fillStyle="white",ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/5,0,2*Math.PI),ctx.fill();break;default:ctx.fillStyle="#f0fdf4",ctx.shadowColor="#f0fdf4",ctx.shadowBlur=10,ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/5,0,2*Math.PI),ctx.fill(),ctx.shadowBlur=0}}
+        function drawThemedStaticTurret(e,t,o){switch(visualTheme){case"military":ctx.fillStyle="#696969",ctx.fillRect(e,t,gridSize,gridSize);const s=e+gridSize/2,l=t+gridSize/2;ctx.fillStyle="#404040",ctx.beginPath(),ctx.moveTo(s,l),ctx.lineTo(s+o.x*gridSize,l+o.y*gridSize),ctx.lineWidth=gridSize/4,ctx.strokeStyle="#404040",ctx.stroke(),ctx.lineWidth=1;break;case"halloween":ctx.fillStyle="#504A4B",ctx.fillRect(e,t,gridSize,gridSize),ctx.fillStyle="#403A3B",ctx.fillRect(e+gridSize/8,t+gridSize/8,gridSize-gridSize/4,gridSize-gridSize/4);break;default:const n="#ff2d75";ctx.fillStyle=n,ctx.shadowColor=n,ctx.shadowBlur=15,ctx.fillRect(e,t,gridSize,gridSize),1===o.x?ctx.fillRect(e,t+gridSize/4,1.5*gridSize,gridSize/2):-1===o.x?ctx.fillRect(e-gridSize/2,t+gridSize/4,1.5*gridSize,gridSize/2):1===o.y?ctx.fillRect(e+gridSize/4,t,.5*gridSize,1.5*gridSize):-1===o.y&&ctx.fillRect(e+gridSize/4,t-gridSize/2,.5*gridSize,1.5*gridSize),ctx.shadowBlur=0}}
+        function drawThemedMobileTurret(e,t){switch(visualTheme){case"military":ctx.fillStyle="#8FBC8F",ctx.fillRect(e,t,gridSize,gridSize),ctx.fillStyle="#556B2F",ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/3,0,2*Math.PI),ctx.fill();break;case"halloween":ctx.globalAlpha=.8,ctx.fillStyle="white",ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize-gridSize/4,gridSize/2.5,0,2*Math.PI),ctx.fill(),ctx.fillRect(e+gridSize/2-gridSize/2.5,t,gridSize/1.25,gridSize),ctx.fillStyle="black",ctx.beginPath(),ctx.arc(e+gridSize/2.5,t+gridSize/2.5,gridSize/8,0,2*Math.PI),ctx.fill(),ctx.beginPath(),ctx.arc(e+gridSize-gridSize/2.5,t+gridSize/2.5,gridSize/8,0,2*Math.PI),ctx.fill(),ctx.globalAlpha=1;break;default:const o="#a855f7";ctx.fillStyle=o,ctx.shadowColor=o,ctx.shadowBlur=15,ctx.beginPath(),ctx.arc(e+gridSize/2,t+gridSize/2,gridSize/2.5,0,2*Math.PI),ctx.fill(),ctx.shadowBlur=0}}
+        function drawThemedTurretBullet(e,t,o){switch(visualTheme){case"military":ctx.fillStyle="#FF4500",ctx.beginPath(),ctx.arc(t+gridSize/2,o+gridSize/2,gridSize/4,0,2*Math.PI),ctx.fill();break;case"halloween":ctx.fillStyle="#ffeb3b",ctx.beginPath(),ctx.moveTo(t+gridSize/2,o+gridSize/4),ctx.lineTo(t+gridSize-gridSize/4,o+gridSize-gridSize/4),ctx.lineTo(t+gridSize/4,o+gridSize-gridSize/4),ctx.closePath(),ctx.fill();break;default:const s="static"===e?gridSize/3:gridSize/4;ctx.beginPath(),ctx.arc(t+gridSize/2,o+gridSize/2,s,0,2*Math.PI),ctx.fill()}}
         function getUnoccupiedPosition(){let e;const t=[...p1.swarm,...p2?p2.swarm:[],battery,weaponPickup,bonusBattery,...obstacles];if(staticTurret)t.push(staticTurret);if(mobileTurret)t.push(mobileTurret);do{e={x:Math.floor(Math.random()*gridCells),y:Math.floor(Math.random()*gridCells)}}while(t.some(t=>t&&t.x===e.x&&t.y===e.y));return e}
         function generateBattery(){const e=getUnoccupiedPosition();battery.x=e.x;battery.y=e.y}
         function endGame(e={}){if (!gameActive) return;
@@ -692,10 +729,20 @@
             returnToMenu();
         });
         copyLinkButton.addEventListener('click', () => {
-            navigator.clipboard.writeText(inviteLink.value).then(() => {
+            const textToCopy = inviteLink.value;
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
                 copyLinkButton.textContent = "Скопировано!";
-                setTimeout(() => copyLinkButton.textContent = "Копировать", 2000);
-            });
+            } catch (err) {
+                copyLinkButton.textContent = "Ошибка!";
+            }
+            document.body.removeChild(textArea);
+            setTimeout(() => copyLinkButton.textContent = "Копировать", 2000);
         });
 
         shareLinkButton.addEventListener('click', () => {
@@ -704,11 +751,15 @@
             }
         });
         function populateColorSelectors(){const e=(t,o)=>{t.innerHTML="";colors.forEach(s=>{const l=document.createElement("div");l.className="color-swatch";l.style.backgroundColor=s;l.dataset.color=s;if(1===o&&s===p1Color||2===o&&s===p2Color)l.classList.add("selected");l.addEventListener("click",()=>{if(1===o)p1Color=s;else p2Color=s;Array.from(t.children).forEach(e=>e.classList.remove("selected"));l.classList.add("selected")});t.appendChild(l)})};e(p1ColorSelector,1);e(p2ColorSelector,2)}
+        function populateThemeSelector(){const themes=[{id:"neon",name:"НЕОН"},{id:"military",name:"МИЛИТАРИ"},{id:"halloween",name:"ХЭЛЛОУИН"}];themeSelector.innerHTML="";themes.forEach(theme=>{const wrapper=document.createElement("div");wrapper.className="theme-swatch flex flex-col items-center cursor-pointer p-1",wrapper.dataset.theme=theme.id;const previewCanvas=document.createElement("canvas");previewCanvas.width=40,previewCanvas.height=40;const pctx=previewCanvas.getContext("2d");drawThemePreview(pctx,theme.id);const label=document.createElement("span");label.className="text-xs mt-1 text-white",label.textContent=theme.name,wrapper.appendChild(previewCanvas),wrapper.appendChild(label),theme.id===visualTheme&&wrapper.classList.add("selected"),wrapper.addEventListener("click",()=>{visualTheme=theme.id,Array.from(themeSelector.children).forEach(child=>child.classList.remove("selected")),wrapper.classList.add("selected");try{localStorage.setItem("cyberSwarmTheme",visualTheme)}catch(e){console.error("Failed to save theme",e)}}),themeSelector.appendChild(wrapper)})}
+        function drawThemePreview(pctx,themeId){pctx.clearRect(0,0,40,40);switch(themeId){case"neon":pctx.fillStyle="#0a0a0a",pctx.fillRect(0,0,40,40),pctx.fillStyle="#08d9d6",pctx.fillRect(15,15,10,10),pctx.fillStyle="rgba(255, 255, 255, 0.9)",pctx.beginPath(),pctx.arc(20,20,3,0,2*Math.PI),pctx.fill();break;case"military":pctx.fillStyle="#556B2F",pctx.fillRect(0,0,40,40),pctx.fillStyle="#6B4423",pctx.fillRect(0,25,40,2),pctx.fillStyle="#BDB76B",pctx.beginPath(),pctx.arc(10,15,5,0,2*Math.PI),pctx.fill(),pctx.fillStyle="#808000",pctx.fillRect(25,25,10,10);break;case"halloween":pctx.fillStyle="#2c1338",pctx.fillRect(0,0,40,40),pctx.fillStyle="#ff7900",pctx.beginPath(),pctx.arc(20,20,8,0,2*Math.PI),pctx.fill(),pctx.fillStyle="black",pctx.fillRect(15,15,4,4),pctx.fillRect(21,15,4,4)}}
+        settingsButton.addEventListener("click",()=>{modeSelection.classList.add("hidden");settingsMenu.classList.remove("hidden");settingsMenu.classList.add("flex"); populateThemeSelector();});
         restartButton.addEventListener("click",()=>{if("pvp"===gameMode)setRestartReady();else{setupGame();animationFrameId=window.requestAnimationFrame(gameLoop)}});
         backToMenuButton.addEventListener("click",returnToMenu);
         window.addEventListener("load",()=>{
             let startParam = null;
             try{const e=localStorage.getItem("cyberSwarmStats");if(e){const t=JSON.parse(e);for(const o in gameStats)if(t[o]){gameStats[o].wins=t[o].wins||0;gameStats[o].losses=t[o].losses||0;gameStats[o].dronesCollected=t[o].dronesCollected||0}}}catch(e){console.error("Failed to load stats from localStorage",e)}
+            try{ const savedTheme = localStorage.getItem('cyberSwarmTheme'); if(savedTheme) visualTheme = savedTheme;} catch(e){}
             try {
                 const tg = window.Telegram.WebApp;
                 tg.ready();
