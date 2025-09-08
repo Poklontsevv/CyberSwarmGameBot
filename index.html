@@ -20,9 +20,11 @@
     <style>
         html, body {
             height: 100%;
+            width: 100%;
             margin: 0;
             padding: 0;
             overflow: hidden;
+            position: fixed; /* Закрепляем viewport */
         }
         body {
             font-family: 'Orbitron', sans-serif;
@@ -719,8 +721,31 @@
         function populateColorSelectors(){const e=(t,o)=>{t.innerHTML="";colors.forEach(s=>{const l=document.createElement("div");l.className="color-swatch";l.style.backgroundColor=s;l.dataset.color=s;if(1===o&&s===p1Color||2===o&&s===p2Color)l.classList.add("selected");l.addEventListener("click",()=>{if(1===o)p1Color=s;else p2Color=s;Array.from(t.children).forEach(e=>e.classList.remove("selected"));l.classList.add("selected")});t.appendChild(l)})};e(p1ColorSelector,1);e(p2ColorSelector,2)}
         restartButton.addEventListener("click",()=>{if("pvp"===gameMode)setRestartReady();else{setupGame();animationFrameId=window.requestAnimationFrame(gameLoop)}});
         backToMenuButton.addEventListener("click",returnToMenu);
-        window.addEventListener("load",()=>{try{const e=localStorage.getItem("cyberSwarmStats");if(e){const t=JSON.parse(e);for(const o in gameStats)if(t[o]){gameStats[o].wins=t[o].wins||0;gameStats[o].losses=t[o].losses||0;gameStats[o].dronesCollected=t[o].dronesCollected||0}}}catch(e){console.error("Failed to load stats from localStorage",e)}if(window.Telegram&&window.Telegram.WebApp){const e=window.Telegram.WebApp;e.ready();e.expand();if(e.initDataUnsafe&&e.initDataUnsafe.user&&e.initDataUnsafe.user.first_name){const t=e.initDataUnsafe.user.first_name.replace(/</g,"&lt;").replace(/>/g,"&gt;");greetingMessage.innerHTML=`Привет, <span style="color: #67e8f9;">${t}</span>!`}else greetingMessage.classList.add("hidden")}resizeCanvas();initializeFirebase()});
+        window.addEventListener("load",()=>{
+            try {
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.expand();
+                if (tg.initDataUnsafe?.user?.first_name) {
+                    const name = tg.initDataUnsafe.user.first_name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    greetingMessage.innerHTML = `Привет, <span style="color: #67e8f9;">${name}</span>!`;
+                } else {
+                    greetingMessage.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Telegram WebApp script error:", e);
+            }
+            
+            try{const e=localStorage.getItem("cyberSwarmStats");if(e){const t=JSON.parse(e);for(const o in gameStats)if(t[o]){gameStats[o].wins=t[o].wins||0;gameStats[o].losses=t[o].losses||0;gameStats[o].dronesCollected=t[o].dronesCollected||0}}}catch(e){console.error("Failed to load stats from localStorage",e)}
+            
+            resizeCanvas();
+            initializeFirebase()
+        });
         window.addEventListener("resize",debounce(resizeCanvas,100));
+        // Prevent pull-to-refresh
+        window.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+        }, { passive: false });
         populateColorSelectors();
         setupTouchControls();
         document.addEventListener("keydown",changeDirection);
