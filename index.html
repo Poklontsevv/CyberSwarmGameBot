@@ -171,7 +171,7 @@
 </head>
 <body>
 <div id="gameWrapper">
-    <div id="mainMenu" class="text-center">
+    <div id="mainMenu" class="text-center relative">
         <h1 class="text-6xl mb-2 text-cyan-400" style="text-shadow: 0 0 10px #08d9d6, 0 0 15px #08d9d6;">КИБЕР-РОЙ</h1>
         <h2 id="greetingMessage" class="text-2xl mb-4 opacity-80" style="text-shadow: 0 0 5px #00ffff;"></h2>
         
@@ -232,6 +232,17 @@
                 <div id="p2ColorSelector" class="flex space-x-2"></div>
             </div>
             <button id="backToMainFromSettingsButton" class="menu-button mt-8">Назад</button>
+        </div>
+
+        <!-- Invite Notification -->
+        <div id="inviteNotification" class="hidden absolute inset-0 bg-black bg-opacity-85 flex flex-col items-center justify-center z-20">
+            <div class="text-center p-6 border-2 border-yellow-400 rounded-lg space-y-4 bg-black">
+                <h2 class="text-3xl text-yellow-400">ВАС ПРИГЛАСИЛИ В ИГРУ!</h2>
+                <div class="flex space-x-4">
+                    <button id="acceptInviteButton" class="menu-button !bg-green-500 !shadow-green-400">ПРИСОЕДИНИТЬСЯ</button>
+                    <button id="declineInviteButton" class="menu-button !bg-red-500 !shadow-red-400">ОТКЛОНИТЬ</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -300,6 +311,9 @@
         const copyLinkButton = document.getElementById('copyLinkButton');
         const shareLinkButton = document.getElementById('shareLinkButton');
         const backToMainFromWaiting = document.getElementById('backToMainFromWaiting');
+        const inviteNotification = document.getElementById('inviteNotification');
+        const acceptInviteButton = document.getElementById('acceptInviteButton');
+        const declineInviteButton = document.getElementById('declineInviteButton');
         // Game settings
         const gridCells = 20;
         let gridSize;
@@ -333,6 +347,7 @@
         let db, auth, userId;
         let gameId, isHost, unsubscribeGame;
         let restartTimeout;
+        let pendingGameId = null;
         
         const __firebase_config = '{"apiKey":"AIzaSyAMDHzWzmgoRkk2YquyF1ZCt83qfC9oB0M","authDomain":"cyberdronesnake.firebaseapp.com","projectId":"cyberdronesnake"}';
         const BOT_USERNAME = "CyberSwarmGameBot"; 
@@ -362,7 +377,8 @@
                     if (user) {
                         userId = user.uid;
                         if (startParam) {
-                            joinGame(startParam);
+                           pendingGameId = startParam;
+                           inviteNotification.classList.remove('hidden');
                         }
                     }
                 });
@@ -395,7 +411,7 @@
             
             await window.firebase.setDoc(gameRef, gameData);
             
-            const link = `https://t.me/${BOT_USERNAME}?startapp=${gameId}`;
+            const link = `https://t.me/${BOT_USERNAME}/app?startapp=${gameId}`;
             inviteLink.value = link;
             
             modeSelection.classList.add('hidden');
@@ -750,11 +766,28 @@
             document.body.removeChild(textArea);
             setTimeout(() => copyLinkButton.textContent = "Копировать", 2000);
         });
-
         shareLinkButton.addEventListener('click', () => {
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink.value)}&text=${encodeURIComponent("Сразимся в Кибер-Рой?")}`);
             }
+        });
+        acceptInviteButton.addEventListener('click', () => {
+            if (pendingGameId && userId) {
+                inviteNotification.classList.add('hidden');
+                mainMenu.classList.add('hidden');
+                connectingScreen.classList.remove('hidden');
+                connectingScreen.classList.add('flex');
+                joinGame(pendingGameId);
+                pendingGameId = null;
+            } else {
+                alert("Не удалось подключиться. Пожалуйста, перезапустите игру.");
+                declineInviteButton.click();
+            }
+        });
+        declineInviteButton.addEventListener('click', () => {
+            inviteNotification.classList.add('hidden');
+            pendingGameId = null;
+            window.history.replaceState({}, document.title, window.location.pathname);
         });
         function populateColorSelectors(){const e=(t,o)=>{t.innerHTML="";colors.forEach(s=>{const l=document.createElement("div");l.className="color-swatch";l.style.backgroundColor=s;l.dataset.color=s;if(1===o&&s===p1Color||2===o&&s===p2Color)l.classList.add("selected");l.addEventListener("click",()=>{if(1===o)p1Color=s;else p2Color=s;Array.from(t.children).forEach(e=>e.classList.remove("selected"));l.classList.add("selected")});t.appendChild(l)})};e(p1ColorSelector,1);e(p2ColorSelector,2)}
         function populateThemeSelector(){const themes=[{id:"halloween",name:"ХЭЛЛОУИН"},{id:"military",name:"МИЛИТАРИ"},{id:"neon",name:"НЕОН"}];themeSelector.innerHTML="";themes.forEach(theme=>{const wrapper=document.createElement("div");wrapper.className="theme-swatch";wrapper.dataset.theme=theme.id;const previewCanvas=document.createElement("canvas");previewCanvas.width=48,previewCanvas.height=48;const pctx=previewCanvas.getContext("2d");drawThemePreview(pctx,theme.id);wrapper.appendChild(previewCanvas),theme.id===visualTheme&&wrapper.classList.add("selected"),wrapper.addEventListener("click",()=>{visualTheme=theme.id,Array.from(themeSelector.children).forEach(child=>child.classList.remove("selected")),wrapper.classList.add("selected");try{localStorage.setItem("cyberSwarmTheme",visualTheme)}catch(e){console.error("Failed to save theme",e)}}),themeSelector.appendChild(wrapper)})}
@@ -772,9 +805,6 @@
                 if (tg.initDataUnsafe) {
                     if (tg.initDataUnsafe.start_param) {
                         startParam = tg.initDataUnsafe.start_param;
-                        mainMenu.classList.add('hidden');
-                        connectingScreen.classList.remove('hidden');
-                        connectingScreen.classList.add('flex');
                     }
                     if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) {
                         const name = tg.initDataUnsafe.user.first_name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
